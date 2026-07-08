@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PatientRouteImport } from './routes/patient'
 import { Route as DoctorRouteImport } from './routes/doctor'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -20,6 +21,11 @@ import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedManagerRouteImport } from './routes/_authenticated.manager'
 import { Route as AuthenticatedHospitalAdminRouteImport } from './routes/_authenticated.hospital-admin'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PatientRoute = PatientRouteImport.update({
   id: '/patient',
   path: '/patient',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/doctor': typeof DoctorRoute
   '/patient': typeof PatientRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/manager': typeof AuthenticatedManagerRoute
   '/messages': typeof AuthenticatedMessagesRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/doctor': typeof DoctorRoute
   '/patient': typeof PatientRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/manager': typeof AuthenticatedManagerRoute
   '/messages': typeof AuthenticatedMessagesRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/doctor': typeof DoctorRoute
   '/patient': typeof PatientRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/_authenticated/manager': typeof AuthenticatedManagerRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/doctor'
     | '/patient'
+    | '/sitemap.xml'
     | '/hospital-admin'
     | '/manager'
     | '/messages'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/doctor'
     | '/patient'
+    | '/sitemap.xml'
     | '/hospital-admin'
     | '/manager'
     | '/messages'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/doctor'
     | '/patient'
+    | '/sitemap.xml'
     | '/_authenticated/hospital-admin'
     | '/_authenticated/manager'
     | '/_authenticated/messages'
@@ -149,11 +161,19 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DoctorRoute: typeof DoctorRoute
   PatientRoute: typeof PatientRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiAiRoute: typeof ApiAiRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/patient': {
       id: '/patient'
       path: '/patient'
@@ -251,6 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DoctorRoute: DoctorRoute,
   PatientRoute: PatientRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiAiRoute: ApiAiRoute,
 }
 export const routeTree = rootRouteImport
