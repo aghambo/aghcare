@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DoctorRouteImport } from './routes/doctor'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as AuthenticatedWebAdminRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedManagerRouteImport } from './routes/_authenticated.manager'
 import { Route as AuthenticatedHospitalAdminRouteImport } from './routes/_authenticated.hospital-admin'
 
+const DoctorRoute = DoctorRouteImport.update({
+  id: '/doctor',
+  path: '/doctor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -56,6 +62,7 @@ const AuthenticatedHospitalAdminRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/doctor': typeof DoctorRoute
   '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/manager': typeof AuthenticatedManagerRoute
   '/web-admin': typeof AuthenticatedWebAdminRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/doctor': typeof DoctorRoute
   '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/manager': typeof AuthenticatedManagerRoute
   '/web-admin': typeof AuthenticatedWebAdminRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/doctor': typeof DoctorRoute
   '/_authenticated/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/_authenticated/manager': typeof AuthenticatedManagerRoute
   '/_authenticated/web-admin': typeof AuthenticatedWebAdminRoute
@@ -84,17 +93,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/doctor'
     | '/hospital-admin'
     | '/manager'
     | '/web-admin'
     | '/api/ai'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/hospital-admin' | '/manager' | '/web-admin' | '/api/ai'
+  to:
+    | '/'
+    | '/auth'
+    | '/doctor'
+    | '/hospital-admin'
+    | '/manager'
+    | '/web-admin'
+    | '/api/ai'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/doctor'
     | '/_authenticated/hospital-admin'
     | '/_authenticated/manager'
     | '/_authenticated/web-admin'
@@ -105,11 +123,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DoctorRoute: typeof DoctorRoute
   ApiAiRoute: typeof ApiAiRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/doctor': {
+      id: '/doctor'
+      path: '/doctor'
+      fullPath: '/doctor'
+      preLoaderRoute: typeof DoctorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -182,6 +208,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  DoctorRoute: DoctorRoute,
   ApiAiRoute: ApiAiRoute,
 }
 export const routeTree = rootRouteImport
