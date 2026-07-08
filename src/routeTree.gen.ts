@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAiRouteImport } from './routes/api/ai'
 import { Route as AuthenticatedWebAdminRouteImport } from './routes/_authenticated.web-admin'
+import { Route as AuthenticatedHospitalAdminRouteImport } from './routes/_authenticated.hospital-admin'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,16 +40,24 @@ const AuthenticatedWebAdminRoute = AuthenticatedWebAdminRouteImport.update({
   path: '/web-admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedHospitalAdminRoute =
+  AuthenticatedHospitalAdminRouteImport.update({
+    id: '/hospital-admin',
+    path: '/hospital-admin',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/web-admin': typeof AuthenticatedWebAdminRoute
   '/api/ai': typeof ApiAiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/web-admin': typeof AuthenticatedWebAdminRoute
   '/api/ai': typeof ApiAiRoute
 }
@@ -57,19 +66,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/hospital-admin': typeof AuthenticatedHospitalAdminRoute
   '/_authenticated/web-admin': typeof AuthenticatedWebAdminRoute
   '/api/ai': typeof ApiAiRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/web-admin' | '/api/ai'
+  fullPaths: '/' | '/auth' | '/hospital-admin' | '/web-admin' | '/api/ai'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/web-admin' | '/api/ai'
+  to: '/' | '/auth' | '/hospital-admin' | '/web-admin' | '/api/ai'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/hospital-admin'
     | '/_authenticated/web-admin'
     | '/api/ai'
   fileRoutesById: FileRoutesById
@@ -118,14 +129,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWebAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/hospital-admin': {
+      id: '/_authenticated/hospital-admin'
+      path: '/hospital-admin'
+      fullPath: '/hospital-admin'
+      preLoaderRoute: typeof AuthenticatedHospitalAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedHospitalAdminRoute: typeof AuthenticatedHospitalAdminRoute
   AuthenticatedWebAdminRoute: typeof AuthenticatedWebAdminRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedHospitalAdminRoute: AuthenticatedHospitalAdminRoute,
   AuthenticatedWebAdminRoute: AuthenticatedWebAdminRoute,
 }
 
