@@ -47,7 +47,19 @@ function ManagerPortal() {
   });
 
   const reviewPayment = useMutation({
-    mutationFn: async ({ id, approve, patientId }: { id: string; approve: boolean; patientId: string }) => {
+    mutationFn: async ({
+      id,
+      approve,
+      patientId,
+      purpose,
+      caseId,
+    }: {
+      id: string;
+      approve: boolean;
+      patientId: string;
+      purpose?: string;
+      caseId?: string;
+    }) => {
       const { data: me } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("payments")
@@ -59,14 +71,27 @@ function ManagerPortal() {
         .eq("id", id);
       if (error) throw error;
       if (approve) {
-        await supabase.from("patients").update({ status: "active" }).eq("id", patientId);
-        await supabase.from("notifications").insert({
-          patient_id: patientId,
-          title: "Payment approved ✅",
-          body: "Your registration payment was approved. Welcome to Ambo General Hospital!",
-          kind: "success",
-        });
+        if (purpose === "service" && caseId) {
+          await supabase.from("patient_cases").update({ payment_status: "approved" }).eq("id", caseId);
+          await supabase.from("notifications").insert({
+            patient_id: patientId,
+            title: "Service payment approved ✅",
+            body: "Your nursing/medicine payment was approved. Your treatment can now proceed.",
+            kind: "success",
+          });
+        } else {
+          await supabase.from("patients").update({ status: "active" }).eq("id", patientId);
+          await supabase.from("notifications").insert({
+            patient_id: patientId,
+            title: "Payment approved ✅",
+            body: "Your registration payment was approved. Welcome to Ambo General Hospital!",
+            kind: "success",
+          });
+        }
       } else {
+        if (purpose === "service" && caseId) {
+          await supabase.from("patient_cases").update({ payment_status: "none" }).eq("id", caseId);
+        }
         await supabase.from("notifications").insert({
           patient_id: patientId,
           title: "Payment rejected",
@@ -76,11 +101,12 @@ function ManagerPortal() {
       }
     },
     onSuccess: (_, v) => {
-      toast.success(v.approve ? "Patient approved ✅" : "Payment rejected");
+      toast.success(v.approve ? "Payment approved ✅" : "Payment rejected");
       queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
     },
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- patient registration ----------
   const [form, setForm] = useState({
@@ -93,6 +119,7 @@ function ManagerPortal() {
     txn: "",
     caseInfo: "",
     notes: "",
+    hasInsurance: false,
   });
   const [photo, setPhoto] = useState<File | null>(null);
 
@@ -120,6 +147,9 @@ function ManagerPortal() {
           medical_notes: form.notes || null,
           photo_url: photoPath,
           registered_by: me.user?.id,
+          has_insurance: form.hasInsurance,
+          // Insurance patients skip registration payment entirely
+          status: form.hasInsurance ? "active" : "pending_payment",
         })
         .select("id")
         .single();
@@ -133,21 +163,27 @@ function ManagerPortal() {
           title: "Initial case information",
           notes: form.caseInfo.trim(),
           created_by: me.user?.id,
+          payment_status: "waived",
         });
       }
       await supabase.from("audit_logs").insert({
         user_id: me.user?.id ?? null,
         action: "patient_registered",
-        details: { patient_id: patient.id, fan: form.fan },
+        details: { patient_id: patient.id, fan: form.fan, insurance: form.hasInsurance },
       });
     },
     onSuccess: () => {
-      toast.success("Patient registered. They can now open the patient portal with their FAN number.");
-      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", txn: "", caseInfo: "", notes: "" });
+      toast.success(
+        form.hasInsurance
+          ? "Insured patient registered — no payment needed. They can open the portal now."
+          : "Patient registered. They must pay the registration fee before accessing the portal.",
+      );
+      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", txn: "", caseInfo: "", notes: "", hasInsurance: false });
       setPhoto(null);
     },
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- patient lookup & room assignment ----------
   const [searchFan, setSearchFan] = useState("");
@@ -179,6 +215,11 @@ function ManagerPortal() {
   const assignToRoom = useMutation({
     mutationFn: async () => {
       if (!foundPatient || !assignRoomId) throw new Error("Choose a room first");
+      if (!foundPatient.has_insurance && foundPatient.status !== "active") {
+        throw new Error(
+          "Patient hasn't paid the registration fee. Only insured or paid patients can be sent to a doctor's room.",
+        );
+      }
       const { data: me } = await supabase.auth.getUser();
       const { error } = await supabase.from("room_queue").insert({
         room_id: assignRoomId,
@@ -197,6 +238,7 @@ function ManagerPortal() {
     onSuccess: () => toast.success("Patient sent to the room queue with full history attached."),
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- time setup ----------
   const [timeInput, setTimeInput] = useState("");
@@ -273,49 +315,66 @@ function ManagerPortal() {
           </div>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {(pendingPayments ?? []).map((p) => (
-            <div key={p.id} className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-bold">{p.patients?.full_name}</div>
-                  <div className="text-xs text-muted-foreground">FAN {p.patients?.fan_number}</div>
+          {(pendingPayments ?? []).map((p) => {
+            const purpose = (p as { purpose?: string }).purpose ?? "registration";
+            const aiOk = (p as { ai_matched?: boolean | null }).ai_matched;
+            const aiInfo = (p as { ai_validation?: { reason?: string; extracted?: Record<string, unknown> } }).ai_validation;
+            return (
+              <div key={p.id} className="glass border-destructive/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-bold">{p.patients?.full_name}</div>
+                    <div className="text-xs text-muted-foreground">FAN {p.patients?.fan_number}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                      UNREVIEWED
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${purpose === "service" ? "bg-terracotta text-terracotta-foreground" : "bg-primary/15 text-primary"}`}
+                    >
+                      {purpose === "service" ? "SERVICE" : "REGISTRATION"}
+                    </span>
+                  </div>
                 </div>
-                <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
-                  UNREVIEWED
-                </span>
+                {p.screenshot_signed && (
+                  <a href={p.screenshot_signed} target="_blank" rel="noreferrer">
+                    <img
+                      src={p.screenshot_signed}
+                      alt="Payment screenshot"
+                      loading="lazy"
+                      className="mt-3 h-36 w-full rounded-xl object-cover"
+                    />
+                  </a>
+                )}
+                <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                  <div>Transaction ID: <span className="font-mono font-bold text-foreground">{p.transaction_id}</span></div>
+                  <div>Amount: <span className="font-bold text-foreground">{Number(p.amount).toLocaleString()} ETB</span></div>
+                  {p.account_used && <div>Account used: {p.account_used}</div>}
+                  <div>Sent {new Date(p.created_at).toLocaleTimeString()}</div>
+                  <div className={aiOk === false ? "font-bold text-destructive" : "font-bold text-success"}>
+                    🤖 AI vision: {aiOk === false ? "MISMATCH" : "MATCH"}
+                    {aiInfo?.reason ? ` — ${aiInfo.reason}` : ""}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => reviewPayment.mutate({ id: p.id, approve: true, patientId: p.patient_id, purpose, caseId: (p as { case_id?: string | null }).case_id ?? undefined })}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-success px-3 py-2 text-xs font-bold text-success-foreground"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </button>
+                  <button
+                    onClick={() => reviewPayment.mutate({ id: p.id, approve: false, patientId: p.patient_id, purpose, caseId: (p as { case_id?: string | null }).case_id ?? undefined })}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-destructive px-3 py-2 text-xs font-bold text-destructive-foreground"
+                  >
+                    <XCircle className="h-4 w-4" /> Reject
+                  </button>
+                </div>
               </div>
-              {p.screenshot_signed && (
-                <a href={p.screenshot_signed} target="_blank" rel="noreferrer">
-                  <img
-                    src={p.screenshot_signed}
-                    alt="Payment screenshot"
-                    loading="lazy"
-                    className="mt-3 h-36 w-full rounded-xl object-cover"
-                  />
-                </a>
-              )}
-              <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                <div>Transaction ID: <span className="font-mono font-bold text-foreground">{p.transaction_id}</span></div>
-                <div>Amount: <span className="font-bold text-foreground">{Number(p.amount).toLocaleString()} ETB</span> · Fee: {Number(hospital?.registration_fee ?? 0).toLocaleString()} ETB</div>
-                {p.account_used && <div>Account used: {p.account_used}</div>}
-                <div>Sent {new Date(p.created_at).toLocaleTimeString()}</div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => reviewPayment.mutate({ id: p.id, approve: true, patientId: p.patient_id })}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-success px-3 py-2 text-xs font-bold text-success-foreground"
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Approve
-                </button>
-                <button
-                  onClick={() => reviewPayment.mutate({ id: p.id, approve: false, patientId: p.patient_id })}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-destructive px-3 py-2 text-xs font-bold text-destructive-foreground"
-                >
-                  <XCircle className="h-4 w-4" /> Reject
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+
           {pendingCount === 0 && (
             <p className="col-span-2 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No payment proofs waiting. New submissions appear here instantly with a red alert.
@@ -351,6 +410,23 @@ function ManagerPortal() {
               {photo ? `📷 ${photo.name}` : "📷 Attach profile picture"}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
             </label>
+            <label
+              className={`col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-semibold transition ${form.hasInsurance ? "border-success bg-success/10 text-success" : "border-input bg-background text-foreground"}`}
+            >
+              <input
+                type="checkbox"
+                checked={form.hasInsurance}
+                onChange={(e) => setForm({ ...form, hasInsurance: e.target.checked })}
+                className="h-5 w-5 rounded accent-success"
+              />
+              <div className="flex-1">
+                <div>🛡️ Patient has health insurance</div>
+                <div className="text-xs font-normal text-muted-foreground">
+                  Insured patients skip the registration fee and doctor-set service fees.
+                </div>
+              </div>
+            </label>
+
           </div>
           <button
             onClick={() => registerPatient.mutate()}
@@ -384,7 +460,14 @@ function ManagerPortal() {
               <div className="mt-4 rounded-2xl border border-border p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-bold">{foundPatient.full_name}</div>
+                    <div className="flex items-center gap-2 font-bold">
+                      {foundPatient.full_name}
+                      {foundPatient.has_insurance && (
+                        <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+                          🛡️ Insured
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       FAN {foundPatient.fan_number} · {foundPatient.sex} ·{" "}
                       <span className={foundPatient.status === "active" ? "font-bold text-success" : "font-bold text-terracotta"}>
@@ -396,6 +479,11 @@ function ManagerPortal() {
                 <div className="mt-2 text-xs text-muted-foreground">
                   {foundPatient.patient_cases?.length ?? 0} case record(s) on file
                 </div>
+                {!foundPatient.has_insurance && foundPatient.status !== "active" && (
+                  <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs font-semibold text-destructive">
+                    ⚠️ Cannot send to a doctor's room until registration fee is paid.
+                  </p>
+                )}
                 <div className="mt-3 flex gap-2">
                   <select
                     value={assignRoomId}
@@ -409,9 +497,10 @@ function ManagerPortal() {
                   </select>
                   <button
                     onClick={() => assignToRoom.mutate()}
-                    disabled={!assignRoomId || assignToRoom.isPending}
+                    disabled={!assignRoomId || assignToRoom.isPending || (!foundPatient.has_insurance && foundPatient.status !== "active")}
                     className="flex items-center gap-1 rounded-xl gradient-hero px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"
                   >
+
                     <Send className="h-4 w-4" /> Send
                   </button>
                 </div>

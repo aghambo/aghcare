@@ -198,3 +198,38 @@
 @utility animate-soft-pulse {
   animation: soft-pulse 2.2s ease-in-out infinite;
 }
+
+/* ---------- Glassmorphism ---------- */
+@utility glass {
+  background: color-mix(in oklch, var(--color-card) 55%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid color-mix(in oklch, var(--color-gold) 25%, transparent);
+  box-shadow: 0 18px 44px -20px oklch(0.3 0.07 158 / 0.35),
+    inset 0 1px 0 oklch(1 0 0 / 0.5);
+  border-radius: var(--radius-2xl);
+}
+
+@utility glass-strong {
+  background: color-mix(in oklch, var(--color-card) 75%, transparent);
+  backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid color-mix(in oklch, var(--color-gold) 35%, transparent);
+  box-shadow: 0 28px 60px -22px oklch(0.24 0.06 160 / 0.45),
+    inset 0 1px 0 oklch(1 0 0 / 0.6);
+  border-radius: var(--radius-3xl);
+}
+
+@utility glass-dark {
+  background: color-mix(in oklch, oklch(0.24 0.06 160) 55%, transparent);
+  backdrop-filter: blur(26px) saturate(160%);
+  border: 1px solid color-mix(in oklch, var(--color-gold) 30%, transparent);
+  box-shadow: 0 22px 50px -22px oklch(0.15 0.06 160 / 0.6),
+    inset 0 1px 0 oklch(1 0 0 / 0.15);
+  border-radius: var(--radius-2xl);
+  color: var(--color-primary-foreground);
+}
+
+@utility glass-input {
+  background: color-mix(in oklch, var(--color-card) 45%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in oklch, var(--color-border) 70%, transparent);
+}
