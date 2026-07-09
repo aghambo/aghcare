@@ -47,7 +47,19 @@ function ManagerPortal() {
   });
 
   const reviewPayment = useMutation({
-    mutationFn: async ({ id, approve, patientId }: { id: string; approve: boolean; patientId: string }) => {
+    mutationFn: async ({
+      id,
+      approve,
+      patientId,
+      purpose,
+      caseId,
+    }: {
+      id: string;
+      approve: boolean;
+      patientId: string;
+      purpose?: string;
+      caseId?: string;
+    }) => {
       const { data: me } = await supabase.auth.getUser();
       const { error } = await supabase
         .from("payments")
@@ -59,14 +71,27 @@ function ManagerPortal() {
         .eq("id", id);
       if (error) throw error;
       if (approve) {
-        await supabase.from("patients").update({ status: "active" }).eq("id", patientId);
-        await supabase.from("notifications").insert({
-          patient_id: patientId,
-          title: "Payment approved ✅",
-          body: "Your registration payment was approved. Welcome to Ambo General Hospital!",
-          kind: "success",
-        });
+        if (purpose === "service" && caseId) {
+          await supabase.from("patient_cases").update({ payment_status: "approved" }).eq("id", caseId);
+          await supabase.from("notifications").insert({
+            patient_id: patientId,
+            title: "Service payment approved ✅",
+            body: "Your nursing/medicine payment was approved. Your treatment can now proceed.",
+            kind: "success",
+          });
+        } else {
+          await supabase.from("patients").update({ status: "active" }).eq("id", patientId);
+          await supabase.from("notifications").insert({
+            patient_id: patientId,
+            title: "Payment approved ✅",
+            body: "Your registration payment was approved. Welcome to Ambo General Hospital!",
+            kind: "success",
+          });
+        }
       } else {
+        if (purpose === "service" && caseId) {
+          await supabase.from("patient_cases").update({ payment_status: "none" }).eq("id", caseId);
+        }
         await supabase.from("notifications").insert({
           patient_id: patientId,
           title: "Payment rejected",
@@ -76,11 +101,12 @@ function ManagerPortal() {
       }
     },
     onSuccess: (_, v) => {
-      toast.success(v.approve ? "Patient approved ✅" : "Payment rejected");
+      toast.success(v.approve ? "Payment approved ✅" : "Payment rejected");
       queryClient.invalidateQueries({ queryKey: ["pending-payments"] });
     },
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- patient registration ----------
   const [form, setForm] = useState({
