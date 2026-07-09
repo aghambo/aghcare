@@ -119,7 +119,7 @@ export const getPatientRecord = createServerFn({ method: "POST" })
     return { patient: { ...patient, photo_signed: photoSigned }, cases: casesWithUrls, checkups: checkups ?? [] };
   });
 
-/** Doctor saves a case: diagnosis, notes, prescriptions, attachments, optional follow-up checkup. */
+/** Doctor saves a case: diagnosis, notes, prescriptions, attachments, optional follow-up checkup, optional service fee. */
 export const saveCase = createServerFn({ method: "POST" })
   .inputValidator(
     (input: {
@@ -133,6 +133,8 @@ export const saveCase = createServerFn({ method: "POST" })
       checkupDate?: string;
       checkupNote?: string;
       queueId?: string;
+      serviceFee?: number;
+      serviceDescription?: string;
     }) =>
       z
         .object({
@@ -149,6 +151,8 @@ export const saveCase = createServerFn({ method: "POST" })
           checkupDate: z.string().optional(),
           checkupNote: z.string().max(1000).optional(),
           queueId: z.string().uuid().optional(),
+          serviceFee: z.number().min(0).max(1_000_000).optional(),
+          serviceDescription: z.string().max(500).optional(),
         })
         .parse(input),
   )
@@ -161,6 +165,17 @@ export const saveCase = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!room || !room.active) return { ok: false as const, error: "Invalid room." };
 
+    // Insurance patients: waive the service fee entirely
+    const { data: patient } = await supabaseAdmin
+      .from("patients")
+      .select("has_insurance")
+      .eq("id", data.patientId)
+      .single();
+
+    const feeAmount = Number(data.serviceFee ?? 0);
+    const paymentStatus: "none" | "waived" =
+      patient?.has_insurance || feeAmount <= 0 ? "waived" : "none";
+
     const { data: newCase, error } = await supabaseAdmin
       .from("patient_cases")
       .insert({
@@ -170,6 +185,9 @@ export const saveCase = createServerFn({ method: "POST" })
         notes: data.notes ?? null,
         diagnosis: data.diagnosis ?? null,
         prescriptions: data.prescriptions ?? null,
+        service_fee: feeAmount,
+        service_description: data.serviceDescription ?? null,
+        payment_status: paymentStatus,
       })
       .select("id")
       .single();
@@ -213,16 +231,27 @@ export const saveCase = createServerFn({ method: "POST" })
       await supabaseAdmin.from("room_queue").update({ status: "done" }).eq("id", data.queueId);
     }
 
-    await supabaseAdmin.from("notifications").insert({
-      patient_id: data.patientId,
-      title: "Medical record updated",
-      body: `New notes were added to your case in ${room.name}.`,
-      kind: "info",
-    });
+    if (feeAmount > 0 && paymentStatus === "none") {
+      await supabaseAdmin.from("notifications").insert({
+        patient_id: data.patientId,
+        title: "Service payment required 💳",
+        body: `Your doctor set a fee of ${feeAmount} ETB for ${data.serviceDescription ?? "your treatment"}. Please pay from your patient portal.`,
+        kind: "alert",
+      });
+    } else {
+      await supabaseAdmin.from("notifications").insert({
+        patient_id: data.patientId,
+        title: "Medical record updated",
+        body: `New notes were added to your case in ${room.name}.`,
+        kind: "info",
+      });
+    }
+
     await supabaseAdmin.from("audit_logs").insert({
       action: "case_saved",
-      details: { case_id: newCase.id, room_id: room.id, patient_id: data.patientId },
+      details: { case_id: newCase.id, room_id: room.id, patient_id: data.patientId, fee: feeAmount },
     });
 
     return { ok: true as const };
   });
+
