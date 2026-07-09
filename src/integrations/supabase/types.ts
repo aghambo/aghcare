@@ -381,8 +381,11 @@ export type Database = {
           id: string
           notes: string | null
           patient_id: string
+          payment_status: string
           prescriptions: string | null
           room_id: string | null
+          service_description: string | null
+          service_fee: number
           title: string
           updated_at: string
         }
@@ -393,8 +396,11 @@ export type Database = {
           id?: string
           notes?: string | null
           patient_id: string
+          payment_status?: string
           prescriptions?: string | null
           room_id?: string | null
+          service_description?: string | null
+          service_fee?: number
           title: string
           updated_at?: string
         }
@@ -405,8 +411,11 @@ export type Database = {
           id?: string
           notes?: string | null
           patient_id?: string
+          payment_status?: string
           prescriptions?: string | null
           room_id?: string | null
+          service_description?: string | null
+          service_fee?: number
           title?: string
           updated_at?: string
         }
@@ -433,6 +442,7 @@ export type Database = {
           date_of_birth: string | null
           fan_number: string
           full_name: string
+          has_insurance: boolean
           hospital_id: string
           id: string
           medical_notes: string | null
@@ -449,6 +459,7 @@ export type Database = {
           date_of_birth?: string | null
           fan_number: string
           full_name: string
+          has_insurance?: boolean
           hospital_id: string
           id?: string
           medical_notes?: string | null
@@ -465,6 +476,7 @@ export type Database = {
           date_of_birth?: string | null
           fan_number?: string
           full_name?: string
+          has_insurance?: boolean
           hospital_id?: string
           id?: string
           medical_notes?: string | null
@@ -489,11 +501,15 @@ export type Database = {
       payments: {
         Row: {
           account_used: string | null
+          ai_matched: boolean | null
+          ai_validation: Json | null
           amount: number | null
           auto_evaluated: boolean
+          case_id: string | null
           created_at: string
           id: string
           patient_id: string
+          purpose: string
           reviewed_at: string | null
           reviewed_by: string | null
           screenshot_url: string | null
@@ -502,11 +518,15 @@ export type Database = {
         }
         Insert: {
           account_used?: string | null
+          ai_matched?: boolean | null
+          ai_validation?: Json | null
           amount?: number | null
           auto_evaluated?: boolean
+          case_id?: string | null
           created_at?: string
           id?: string
           patient_id: string
+          purpose?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           screenshot_url?: string | null
@@ -515,11 +535,15 @@ export type Database = {
         }
         Update: {
           account_used?: string | null
+          ai_matched?: boolean | null
+          ai_validation?: Json | null
           amount?: number | null
           auto_evaluated?: boolean
+          case_id?: string | null
           created_at?: string
           id?: string
           patient_id?: string
+          purpose?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           screenshot_url?: string | null
@@ -527,6 +551,13 @@ export type Database = {
           transaction_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "patient_cases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_patient_id_fkey"
             columns: ["patient_id"]
