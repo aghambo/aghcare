@@ -295,6 +295,15 @@ function DoctorPortal() {
                         📎 {files.length ? `${files.length} file(s) attached` : "Attach images, PDFs or audio (max 5)"}
                         <input type="file" multiple accept="image/*,.pdf,audio/*" className="hidden" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
                       </label>
+                      <div className="grid grid-cols-2 gap-3 rounded-xl border border-terracotta/40 bg-terracotta/5 p-3">
+                        <label className="text-xs font-bold text-muted-foreground">💳 Service fee (ETB)
+                          <input type="number" min={0} value={caseForm.serviceFee} onChange={(e) => setCaseForm({ ...caseForm, serviceFee: e.target.value })} placeholder="0 for none" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal" />
+                        </label>
+                        <label className="text-xs font-bold text-muted-foreground">Fee description
+                          <input value={caseForm.serviceDescription} onChange={(e) => setCaseForm({ ...caseForm, serviceDescription: e.target.value })} placeholder="e.g. nursing + antibiotics" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal" />
+                        </label>
+                        <p className="col-span-2 text-[11px] text-muted-foreground">Insured patients are auto-waived. Others pay from the patient portal; the amount typed must match the screenshot exactly.</p>
+                      </div>
                       <div className="grid grid-cols-2 gap-3 rounded-xl border border-gold/40 bg-accent p-3">
                         <label className="text-xs font-bold text-muted-foreground">Follow-up checkup date
                           <input type="date" value={caseForm.checkupDate} onChange={(e) => setCaseForm({ ...caseForm, checkupDate: e.target.value })} className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal" />
@@ -302,6 +311,7 @@ function DoctorPortal() {
                         <label className="text-xs font-bold text-muted-foreground">Reminder note
                           <input value={caseForm.checkupNote} onChange={(e) => setCaseForm({ ...caseForm, checkupNote: e.target.value })} placeholder="e.g. bring lab results" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal" />
                         </label>
+
                       </div>
                       <button
                         onClick={submitCase}
