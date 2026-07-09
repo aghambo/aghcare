@@ -21,7 +21,7 @@ export const Route = createFileRoute("/patient")({
   component: PatientPortal,
 });
 
-type PayPurpose = { kind: "registration" } | { kind: "service"; caseId: string; fee: number; description: string };
+type PayPurpose = { kind: "service"; caseId: string; fee: number; description: string };
 
 function PatientPortal() {
   const lookup = useServerFn(lookupPatient);
