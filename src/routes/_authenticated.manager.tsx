@@ -189,6 +189,11 @@ function ManagerPortal() {
   const assignToRoom = useMutation({
     mutationFn: async () => {
       if (!foundPatient || !assignRoomId) throw new Error("Choose a room first");
+      if (!foundPatient.has_insurance && foundPatient.status !== "active") {
+        throw new Error(
+          "Patient hasn't paid the registration fee. Only insured or paid patients can be sent to a doctor's room.",
+        );
+      }
       const { data: me } = await supabase.auth.getUser();
       const { error } = await supabase.from("room_queue").insert({
         room_id: assignRoomId,
@@ -207,6 +212,7 @@ function ManagerPortal() {
     onSuccess: () => toast.success("Patient sent to the room queue with full history attached."),
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- time setup ----------
   const [timeInput, setTimeInput] = useState("");
