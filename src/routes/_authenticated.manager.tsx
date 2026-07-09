@@ -410,6 +410,23 @@ function ManagerPortal() {
               {photo ? `📷 ${photo.name}` : "📷 Attach profile picture"}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
             </label>
+            <label
+              className={`col-span-2 flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm font-semibold transition ${form.hasInsurance ? "border-success bg-success/10 text-success" : "border-input bg-background text-foreground"}`}
+            >
+              <input
+                type="checkbox"
+                checked={form.hasInsurance}
+                onChange={(e) => setForm({ ...form, hasInsurance: e.target.checked })}
+                className="h-5 w-5 rounded accent-success"
+              />
+              <div className="flex-1">
+                <div>🛡️ Patient has health insurance</div>
+                <div className="text-xs font-normal text-muted-foreground">
+                  Insured patients skip the registration fee and doctor-set service fees.
+                </div>
+              </div>
+            </label>
+
           </div>
           <button
             onClick={() => registerPatient.mutate()}
