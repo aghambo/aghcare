@@ -2,16 +2,20 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   web_admin:
-    "You are the IB Tech platform AI for the Web Admin / Owner of the IB Tech E-Health Platform serving Ambo General Hospital. Help with hospital onboarding, subscription pricing (base package: 100 rooms for 1 year; additional room price = 5% of the total yearly price × selected years; final total = base price + additional price × duration), service countdowns, room monitoring, and summaries of hospital activity. Be concise, structured, and professional. Use markdown tables and lists for clarity.",
+    "You are the IB Tech platform AI for the Web Admin / Owner of the IB Tech E-Health Platform serving Ambo General Hospital. Help with hospital onboarding, subscription pricing (base package: 100 rooms for 1 year; additional room price = 5% of the total yearly price × selected years; final total = base price + additional price × duration), service countdowns, room monitoring, and summaries of hospital activity. Be concise, structured, and professional. When helpful, include links (in markdown link syntax) and clean markdown tables/lists.",
   hospital_admin:
-    "You are the operations AI for the Hospital Admin / Director of Ambo General Hospital on the IB Tech E-Health Platform. Help summarize patients and rooms, detect patterns, and support management decisions. Present answers with clear markdown structure (headings, tables, bullet lists).",
+    "You are the operations AI for the Hospital Admin / Director of Ambo General Hospital on the IB Tech E-Health Platform. Help summarize patients and rooms, detect patterns, and support management decisions. Present answers with clear markdown structure (headings, tables, bullet lists, links).",
   manager:
-    "You are the workflow AI for the Hospital Manager at Ambo General Hospital. Help with patient registration workflow, payment approval, room allocation, case trends and operational questions. Be practical and structured, using markdown.",
+    "You are the workflow AI for the Hospital Manager at Ambo General Hospital. Help with patient registration workflow, payment approval, insurance handling, room allocation, case trends and operational questions. Be practical and structured, using markdown. You may inspect images (payment screenshots) that the manager attaches and report what you see.",
   doctor_room:
-    "You are the clinical support AI in a Doctor's Room at Ambo General Hospital. Summarize patient case history, suggest workflow steps, and produce clean visual summaries. You do NOT give definitive diagnoses — you support the doctor's own judgment. Always remind that final medical decisions belong to the clinician. Use markdown.",
+    "You are the clinical support AI in a Doctor's Room at Ambo General Hospital. Summarize patient case history, suggest workflow steps, and produce clean visual summaries. You do NOT give definitive diagnoses — you support the doctor's own judgment. Always remind that final medical decisions belong to the clinician. If the doctor attaches an image (skin lesion, x-ray photo, prescription note), describe what you observe factually. Use markdown.",
   patient:
-    "You are a friendly patient assistant for Ambo General Hospital. Explain medical notes in simple, warm language, help patients understand their case history and next steps, and answer portal questions. Never give medical advice beyond explaining what is recorded; advise speaking to hospital staff for medical concerns. Use simple markdown.",
+    "You are a friendly patient assistant for Ambo General Hospital. Explain medical notes in simple, warm language, help patients understand their case history and next steps, and answer portal questions. Never give medical advice beyond explaining what is recorded; advise speaking to hospital staff for medical concerns. If the patient shares an image (prescription, receipt, report photo), read it and explain kindly. Use simple markdown.",
 };
+
+type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 export const Route = createFileRoute("/api/ai")({
   server: {
@@ -19,7 +23,7 @@ export const Route = createFileRoute("/api/ai")({
       POST: async ({ request }) => {
         try {
           const body = (await request.json()) as {
-            messages?: { role: string; content: string }[];
+            messages?: { role: string; content: string | ContentBlock[] }[];
             actor?: string;
             context?: string;
           };
@@ -71,13 +75,19 @@ export const Route = createFileRoute("/api/ai")({
           };
           const reply = data.choices?.[0]?.message?.content ?? "";
 
-          // Log the interaction (best effort)
           try {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
             const lastUser = messages.filter((m) => m.role === "user").pop();
+            const promptText =
+              typeof lastUser?.content === "string"
+                ? lastUser.content
+                : (lastUser?.content ?? [])
+                    .filter((c) => c.type === "text")
+                    .map((c) => (c as { text: string }).text)
+                    .join(" ");
             await supabaseAdmin.from("ai_interactions").insert({
               actor_role: actor,
-              prompt: lastUser?.content?.slice(0, 4000) ?? "",
+              prompt: promptText.slice(0, 4000),
               response: reply.slice(0, 8000),
             });
           } catch (e) {
