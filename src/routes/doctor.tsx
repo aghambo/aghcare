@@ -106,6 +106,8 @@ function DoctorPortal() {
           checkupDate: caseForm.checkupDate || undefined,
           checkupNote: caseForm.checkupNote || undefined,
           queueId: activePatient.queueId,
+          serviceFee: caseForm.serviceFee ? parseFloat(caseForm.serviceFee) : undefined,
+          serviceDescription: caseForm.serviceDescription || undefined,
         },
       });
       if (!result.ok) {
@@ -113,7 +115,8 @@ function DoctorPortal() {
         return;
       }
       toast.success("Case saved — the patient's history and portal are updated.");
-      setCaseForm({ title: "", notes: "", diagnosis: "", prescriptions: "", checkupDate: "", checkupNote: "" });
+      setCaseForm({ title: "", notes: "", diagnosis: "", prescriptions: "", checkupDate: "", checkupNote: "", serviceFee: "", serviceDescription: "" });
+
       setFiles([]);
       setActivePatient(null);
       queryClient.invalidateQueries({ queryKey: ["room-queue"] });
