@@ -93,6 +93,7 @@ function ManagerPortal() {
     txn: "",
     caseInfo: "",
     notes: "",
+    hasInsurance: false,
   });
   const [photo, setPhoto] = useState<File | null>(null);
 
@@ -120,6 +121,9 @@ function ManagerPortal() {
           medical_notes: form.notes || null,
           photo_url: photoPath,
           registered_by: me.user?.id,
+          has_insurance: form.hasInsurance,
+          // Insurance patients skip registration payment entirely
+          status: form.hasInsurance ? "active" : "pending_payment",
         })
         .select("id")
         .single();
@@ -133,21 +137,27 @@ function ManagerPortal() {
           title: "Initial case information",
           notes: form.caseInfo.trim(),
           created_by: me.user?.id,
+          payment_status: "waived",
         });
       }
       await supabase.from("audit_logs").insert({
         user_id: me.user?.id ?? null,
         action: "patient_registered",
-        details: { patient_id: patient.id, fan: form.fan },
+        details: { patient_id: patient.id, fan: form.fan, insurance: form.hasInsurance },
       });
     },
     onSuccess: () => {
-      toast.success("Patient registered. They can now open the patient portal with their FAN number.");
-      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", txn: "", caseInfo: "", notes: "" });
+      toast.success(
+        form.hasInsurance
+          ? "Insured patient registered — no payment needed. They can open the portal now."
+          : "Patient registered. They must pay the registration fee before accessing the portal.",
+      );
+      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", txn: "", caseInfo: "", notes: "", hasInsurance: false });
       setPhoto(null);
     },
     onError: (e) => toast.error(e.message),
   });
+
 
   // ---------- patient lookup & room assignment ----------
   const [searchFan, setSearchFan] = useState("");
