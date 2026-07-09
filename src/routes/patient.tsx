@@ -306,18 +306,8 @@ function PatientPortal() {
           <div className="glass-strong animate-fade-up p-6">
             <h2 className="font-display text-lg font-bold">Case history</h2>
             <div className="mt-4 space-y-4">
-              {(portal?.cases ?? []).map((c: {
-                id: string;
-                title: string;
-                created_at: string;
-                rooms?: { name?: string };
-                diagnosis?: string;
-                notes?: string;
-                prescriptions?: string;
-                service_fee?: number;
-                payment_status?: string;
-                case_attachments?: { id: string; file_type: string; signed: string | null; file_name: string }[];
-              }) => (
+              {(portal?.cases ?? []).map((c: any) => (
+
                 <div key={c.id} className="rounded-xl border border-border/60 bg-card/50 p-4 backdrop-blur">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{c.title}</span>
