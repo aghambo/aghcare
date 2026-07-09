@@ -289,49 +289,66 @@ function ManagerPortal() {
           </div>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {(pendingPayments ?? []).map((p) => (
-            <div key={p.id} className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-bold">{p.patients?.full_name}</div>
-                  <div className="text-xs text-muted-foreground">FAN {p.patients?.fan_number}</div>
+          {(pendingPayments ?? []).map((p) => {
+            const purpose = (p as { purpose?: string }).purpose ?? "registration";
+            const aiOk = (p as { ai_matched?: boolean | null }).ai_matched;
+            const aiInfo = (p as { ai_validation?: { reason?: string; extracted?: Record<string, unknown> } }).ai_validation;
+            return (
+              <div key={p.id} className="glass border-destructive/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-bold">{p.patients?.full_name}</div>
+                    <div className="text-xs text-muted-foreground">FAN {p.patients?.fan_number}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                      UNREVIEWED
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${purpose === "service" ? "bg-terracotta text-terracotta-foreground" : "bg-primary/15 text-primary"}`}
+                    >
+                      {purpose === "service" ? "SERVICE" : "REGISTRATION"}
+                    </span>
+                  </div>
                 </div>
-                <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
-                  UNREVIEWED
-                </span>
+                {p.screenshot_signed && (
+                  <a href={p.screenshot_signed} target="_blank" rel="noreferrer">
+                    <img
+                      src={p.screenshot_signed}
+                      alt="Payment screenshot"
+                      loading="lazy"
+                      className="mt-3 h-36 w-full rounded-xl object-cover"
+                    />
+                  </a>
+                )}
+                <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                  <div>Transaction ID: <span className="font-mono font-bold text-foreground">{p.transaction_id}</span></div>
+                  <div>Amount: <span className="font-bold text-foreground">{Number(p.amount).toLocaleString()} ETB</span></div>
+                  {p.account_used && <div>Account used: {p.account_used}</div>}
+                  <div>Sent {new Date(p.created_at).toLocaleTimeString()}</div>
+                  <div className={aiOk === false ? "font-bold text-destructive" : "font-bold text-success"}>
+                    🤖 AI vision: {aiOk === false ? "MISMATCH" : "MATCH"}
+                    {aiInfo?.reason ? ` — ${aiInfo.reason}` : ""}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => reviewPayment.mutate({ id: p.id, approve: true, patientId: p.patient_id, purpose, caseId: (p as { case_id?: string | null }).case_id ?? undefined })}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-success px-3 py-2 text-xs font-bold text-success-foreground"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </button>
+                  <button
+                    onClick={() => reviewPayment.mutate({ id: p.id, approve: false, patientId: p.patient_id, purpose, caseId: (p as { case_id?: string | null }).case_id ?? undefined })}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-destructive px-3 py-2 text-xs font-bold text-destructive-foreground"
+                  >
+                    <XCircle className="h-4 w-4" /> Reject
+                  </button>
+                </div>
               </div>
-              {p.screenshot_signed && (
-                <a href={p.screenshot_signed} target="_blank" rel="noreferrer">
-                  <img
-                    src={p.screenshot_signed}
-                    alt="Payment screenshot"
-                    loading="lazy"
-                    className="mt-3 h-36 w-full rounded-xl object-cover"
-                  />
-                </a>
-              )}
-              <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                <div>Transaction ID: <span className="font-mono font-bold text-foreground">{p.transaction_id}</span></div>
-                <div>Amount: <span className="font-bold text-foreground">{Number(p.amount).toLocaleString()} ETB</span> · Fee: {Number(hospital?.registration_fee ?? 0).toLocaleString()} ETB</div>
-                {p.account_used && <div>Account used: {p.account_used}</div>}
-                <div>Sent {new Date(p.created_at).toLocaleTimeString()}</div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => reviewPayment.mutate({ id: p.id, approve: true, patientId: p.patient_id })}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-success px-3 py-2 text-xs font-bold text-success-foreground"
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Approve
-                </button>
-                <button
-                  onClick={() => reviewPayment.mutate({ id: p.id, approve: false, patientId: p.patient_id })}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-destructive px-3 py-2 text-xs font-bold text-destructive-foreground"
-                >
-                  <XCircle className="h-4 w-4" /> Reject
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+
           {pendingCount === 0 && (
             <p className="col-span-2 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No payment proofs waiting. New submissions appear here instantly with a red alert.
