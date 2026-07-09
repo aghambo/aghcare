@@ -460,7 +460,14 @@ function ManagerPortal() {
               <div className="mt-4 rounded-2xl border border-border p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-bold">{foundPatient.full_name}</div>
+                    <div className="flex items-center gap-2 font-bold">
+                      {foundPatient.full_name}
+                      {foundPatient.has_insurance && (
+                        <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+                          🛡️ Insured
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       FAN {foundPatient.fan_number} · {foundPatient.sex} ·{" "}
                       <span className={foundPatient.status === "active" ? "font-bold text-success" : "font-bold text-terracotta"}>
@@ -472,6 +479,11 @@ function ManagerPortal() {
                 <div className="mt-2 text-xs text-muted-foreground">
                   {foundPatient.patient_cases?.length ?? 0} case record(s) on file
                 </div>
+                {!foundPatient.has_insurance && foundPatient.status !== "active" && (
+                  <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs font-semibold text-destructive">
+                    ⚠️ Cannot send to a doctor's room until registration fee is paid.
+                  </p>
+                )}
                 <div className="mt-3 flex gap-2">
                   <select
                     value={assignRoomId}
@@ -485,9 +497,10 @@ function ManagerPortal() {
                   </select>
                   <button
                     onClick={() => assignToRoom.mutate()}
-                    disabled={!assignRoomId || assignToRoom.isPending}
+                    disabled={!assignRoomId || assignToRoom.isPending || (!foundPatient.has_insurance && foundPatient.status !== "active")}
                     className="flex items-center gap-1 rounded-xl gradient-hero px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"
                   >
+
                     <Send className="h-4 w-4" /> Send
                   </button>
                 </div>
