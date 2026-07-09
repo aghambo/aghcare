@@ -83,7 +83,7 @@ function DoctorPortal() {
   });
 
   // ---- case form ----
-  const [caseForm, setCaseForm] = useState({ title: "", notes: "", diagnosis: "", prescriptions: "", checkupDate: "", checkupNote: "" });
+  const [caseForm, setCaseForm] = useState({ title: "", notes: "", diagnosis: "", prescriptions: "", checkupDate: "", checkupNote: "", serviceFee: "", serviceDescription: "" });
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
