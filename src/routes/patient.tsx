@@ -212,7 +212,7 @@ function PatientPortal() {
         <BackgroundCarousel hospitalId={portal?.hospital.id} height="h-44" />
 
         {/* Service payments due */}
-        {unpaidCases.map((c: { id: string; title: string; service_fee: number; service_description?: string; rooms?: { name?: string } }) => (
+        {unpaidCases.map((c: any) => (
           <div key={c.id} className="glass border-terracotta/40 p-5 ring-2 ring-terracotta/30">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -248,7 +248,7 @@ function PatientPortal() {
             </p>
             <div className="mt-3 rounded-xl border border-gold/40 bg-accent/60 p-3 text-sm backdrop-blur">
               {portal?.hospital.telebirr && <div>📱 Telebirr: <span className="font-bold">{portal.hospital.telebirr}</span></div>}
-              {portal?.hospital.bankAccounts.map((b: string) => <div key={b}>🏦 {b}</div>)}
+              {portal?.hospital.bankAccounts.map((b: any) => <div key={b}>🏦 {b}</div>)}
             </div>
             <div className="mt-3 space-y-3">
               <input placeholder="Transaction ID *" value={txn} onChange={(e) => setTxn(e.target.value)} className="glass-input w-full rounded-xl px-3 py-2.5 text-sm" />
@@ -270,7 +270,7 @@ function PatientPortal() {
         )}
 
         {/* Checkup alerts */}
-        {(portal?.checkups ?? []).map((c: { id: string; checkup_date: string; note?: string; rooms?: { name?: string } }) => (
+        {(portal?.checkups ?? []).map((c: any) => (
           <div key={c.id} className="glass flex items-center gap-3 border-gold/50 p-4 ring-2 ring-gold/40">
             <span className="h-3 w-3 rounded-full bg-gold animate-soft-pulse" />
             <div className="text-sm">
@@ -284,7 +284,7 @@ function PatientPortal() {
         <div className="glass p-6">
           <h2 className="font-display text-lg font-bold">Notifications</h2>
           <div className="mt-3 space-y-2">
-            {(portal?.notifications ?? []).slice(0, 6).map((n: { id: string; title: string; body: string; kind: string }) => (
+            {(portal?.notifications ?? []).slice(0, 6).map((n: any) => (
               <div key={n.id} className="flex items-start gap-2 text-sm">
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.kind === "alert" ? "bg-destructive" : n.kind === "success" ? "bg-success" : "bg-gold"}`} />
                 <div><span className="font-semibold">{n.title}</span> <span className="text-xs text-muted-foreground">— {n.body}</span></div>
@@ -353,7 +353,7 @@ function PatientPortal() {
           actor="patient"
           context={
             portal
-              ? `Patient: ${portal.patient.full_name}${portal.patient.has_insurance ? " (insured)" : ""}. Cases: ${portal.cases.map((c: { title: string; diagnosis?: string; prescriptions?: string }) => `${c.title}: ${c.diagnosis ?? ""} ${c.prescriptions ?? ""}`).join(" | ")}. Upcoming checkups: ${portal.checkups.map((c: { checkup_date: string }) => c.checkup_date).join(", ")}`
+              ? `Patient: ${portal.patient.full_name}${portal.patient.has_insurance ? " (insured)" : ""}. Cases: ${portal.cases.map((c: any) => `${c.title}: ${c.diagnosis ?? ""} ${c.prescriptions ?? ""}`).join(" | ")}. Upcoming checkups: ${portal.checkups.map((c: any) => c.checkup_date).join(", ")}`
               : undefined
           }
         />
