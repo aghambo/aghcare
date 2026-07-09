@@ -323,7 +323,7 @@ function PatientPortal() {
                   )}
                   {c.case_attachments && c.case_attachments.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {c.case_attachments.map((a) =>
+                      {c.case_attachments.map((a: any) =>
                         a.file_type === "image" && a.signed ? (
                           <a key={a.id} href={a.signed} target="_blank" rel="noreferrer"><img src={a.signed} alt={a.file_name} loading="lazy" className="h-16 w-16 rounded-lg object-cover" /></a>
                         ) : (
