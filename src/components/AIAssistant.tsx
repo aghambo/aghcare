@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ImageIcon, Loader2, Send, Sparkles, X } from "lucide-react";
+import { ImageIcon, Loader2, Send, Sparkles, Wand2, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fileToBase64 } from "@/lib/media";
 
@@ -11,7 +11,7 @@ type Msg = {
   role: "user" | "assistant";
   content: string | ContentBlock[];
   display?: string;
-  images?: string[];
+  images?: string[]; // for user: attached; for assistant: generated
 };
 
 export function AIAssistant({
@@ -27,6 +27,7 @@ export function AIAssistant({
   const [input, setInput] = useState("");
   const [images, setImages] = useState<{ dataUrl: string; file: File }[]>([]);
   const [busy, setBusy] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const addImages = async (files: FileList | null) => {
@@ -56,6 +57,7 @@ export function AIAssistant({
 
     const next = [...messages, userMsg];
     setMessages(next);
+    const wasImageMode = imageMode;
     setInput("");
     setImages([]);
     setBusy(true);
@@ -64,18 +66,31 @@ export function AIAssistant({
       const resp = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: wireMessages, actor, context }),
+        body: JSON.stringify({
+          messages: wireMessages,
+          actor,
+          context,
+          mode: wasImageMode ? "image" : "chat",
+        }),
       });
-      const data = (await resp.json()) as { reply?: string; error?: string };
-      if (!resp.ok || !data.reply) {
+      const data = (await resp.json()) as { reply?: string; images?: string[]; error?: string };
+      if (!resp.ok) {
         setMessages([...next, { role: "assistant", content: `⚠️ ${data.error ?? "AI request failed."}` }]);
       } else {
-        setMessages([...next, { role: "assistant", content: data.reply }]);
+        setMessages([
+          ...next,
+          {
+            role: "assistant",
+            content: data.reply ?? "",
+            images: data.images ?? [],
+          },
+        ]);
       }
     } catch {
       setMessages([...next, { role: "assistant", content: "⚠️ Network error. Please try again." }]);
     } finally {
       setBusy(false);
+      setImageMode(false);
       setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: "smooth" }), 60);
     }
   };
@@ -95,8 +110,8 @@ export function AIAssistant({
       >
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Ask anything — or attach an image (screenshot, prescription, report). Answers support
-            markdown, tables and links.
+            Ask anything, attach an image (screenshot, prescription, report), or hit the 🎨 button to
+            generate an image. Answers support markdown, tables, images and links.
           </p>
         )}
         {messages.map((m, i) => (
@@ -125,14 +140,32 @@ export function AIAssistant({
                   {m.display && <div>{m.display}</div>}
                 </div>
               ) : (
-                <ReactMarkdown>{typeof m.content === "string" ? m.content : ""}</ReactMarkdown>
+                <div className="space-y-2">
+                  {typeof m.content === "string" && m.content && (
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                  )}
+                  {m.images && m.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 not-prose">
+                      {m.images.map((src, k) => (
+                        <a key={k} href={src} target="_blank" rel="noreferrer">
+                          <img
+                            src={src}
+                            alt="AI generated"
+                            className="max-h-64 rounded-xl ring-1 ring-border shadow-md"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
         ))}
         {busy && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {imageMode ? "Generating image…" : "Thinking…"}
           </div>
         )}
       </div>
@@ -151,6 +184,11 @@ export function AIAssistant({
           ))}
         </div>
       )}
+      {imageMode && (
+        <div className="border-t border-border/50 bg-gold/10 px-3 py-1.5 text-[11px] font-semibold text-gold-foreground/80">
+          🎨 Image mode — your next prompt will generate an image. Click the wand again to cancel.
+        </div>
+      )}
       <div className="flex items-center gap-2 border-t border-border/50 bg-card/50 p-3 backdrop-blur">
         <label className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-input bg-background/60 text-muted-foreground hover:border-primary">
           <ImageIcon className="h-4 w-4" />
@@ -162,11 +200,23 @@ export function AIAssistant({
             onChange={(e) => addImages(e.target.files)}
           />
         </label>
+        <button
+          type="button"
+          onClick={() => setImageMode((m) => !m)}
+          title="Generate an image with AI"
+          className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+            imageMode
+              ? "border-gold bg-gold text-gold-foreground"
+              : "border-input bg-background/60 text-muted-foreground hover:border-primary"
+          }`}
+        >
+          <Wand2 className="h-4 w-4" />
+        </button>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Ask the assistant…"
+          placeholder={imageMode ? "Describe the image to generate…" : "Ask the assistant…"}
           className="glass-input flex-1 rounded-xl px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
         />
         <button
