@@ -44,6 +44,11 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Users; labe
 function WebAdminPortal() {
   const queryClient = useQueryClient();
   const { data: hospital } = useHospital();
+  const [lang] = useLang();
+  const listAccountsFn = useServerFn(listAccounts);
+  const addAuthorizedFn = useServerFn(addAuthorized);
+  const removeAuthorizedFn = useServerFn(removeAuthorized);
+  const removeActiveFn = useServerFn(removeActiveUser);
 
   const { data: stats } = useQuery({
     queryKey: ["web-admin-stats"],
@@ -55,6 +60,40 @@ function WebAdminPortal() {
       ]);
       return { rooms: rooms.count ?? 0, patients: patients.count ?? 0, pending: pending.count ?? 0 };
     },
+  });
+
+  const { data: accounts } = useQuery({
+    queryKey: ["accounts", "web_admin"],
+    queryFn: () => listAccountsFn(),
+  });
+
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<"hospital_admin" | "manager">("hospital_admin");
+
+  const addAcct = useMutation({
+    mutationFn: () => addAuthorizedFn({ data: { email: newEmail.trim().toLowerCase(), role: newRole } }),
+    onSuccess: () => {
+      toast.success("Account authorized");
+      setNewEmail("");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const rmAuth = useMutation({
+    mutationFn: (id: string) => removeAuthorizedFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Authorization removed");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const rmActive = useMutation({
+    mutationFn: (userRoleId: string) => removeActiveFn({ data: { userRoleId } }),
+    onSuccess: () => {
+      toast.success("Access revoked");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const { data: rooms } = useQuery({
@@ -345,6 +384,111 @@ function WebAdminPortal() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* User management */}
+      <div className="card-panel p-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg font-bold">{t("admin.userManagement", lang)}</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Authorize hospital admins and managers, review who has active access, and revoke access instantly.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-2 rounded-2xl border border-gold/30 bg-accent/40 p-3">
+          <label className="flex-1 min-w-[220px] text-xs font-bold text-muted-foreground">
+            {t("common.email", lang)}
+            <input
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="user@hospital.et"
+              className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal outline-none ring-ring focus:ring-2"
+            />
+          </label>
+          <label className="text-xs font-bold text-muted-foreground">
+            {t("common.role", lang)}
+            <select
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as "hospital_admin" | "manager")}
+              className="mt-1 rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal"
+            >
+              <option value="hospital_admin">{t("role.hospital_admin", lang)}</option>
+              <option value="manager">{t("role.manager", lang)}</option>
+            </select>
+          </label>
+          <button
+            onClick={() => newEmail.trim() && addAcct.mutate()}
+            disabled={addAcct.isPending}
+            className="flex items-center gap-1 rounded-xl gradient-hero px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-60"
+          >
+            <UserPlus className="h-4 w-4" /> {t("admin.addAccount", lang)}
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div>
+            <h3 className="font-display text-sm font-bold">Active accounts (signed in at least once)</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.active ?? []).map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-bold text-primary">
+                        {t(`role.${a.role}`, lang)}
+                      </span>
+                      <span className="ml-2">joined {new Date(a.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmActive.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {t("common.remove", lang)}
+                  </button>
+                </div>
+              ))}
+              {(accounts?.active ?? []).length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No active users yet.
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-bold">Authorized emails (invited, not yet signed in)</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.authorized ?? []).map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="rounded-full bg-gold/20 px-2 py-0.5 font-bold text-gold-foreground">
+                        {t(`role.${a.role}`, lang)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmAuth.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {(accounts?.authorized ?? []).length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No pending invitations.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
