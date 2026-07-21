@@ -238,11 +238,47 @@ function PatientPortal() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="hidden md:block"><HospitalClock hospitalId={portal?.hospital.id} /></div>
-            <div className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              {checkupCount > 0 && <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground animate-soft-pulse">{checkupCount}</span>}
+            <LanguageSwitcher />
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => {
+                  setNotifOpen((o) => !o);
+                  const notifs = portal?.notifications ?? [];
+                  setSeenIds(new Set(notifs.map((n: any) => n.id)));
+                  setRing(false);
+                }}
+                className={`relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card ${ring ? "animate-bounce ring-2 ring-destructive" : ""}`}
+                aria-label={t("nav.notifications", lang)}
+              >
+                <Bell className={`h-5 w-5 ${ring ? "text-destructive" : "text-muted-foreground"}`} />
+                {(portal?.notifications ?? []).filter((n: any) => !seenIds.has(n.id)).length > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground animate-soft-pulse">
+                    {(portal?.notifications ?? []).filter((n: any) => !seenIds.has(n.id)).length}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 z-50 mt-2 max-h-96 w-80 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-elegant">
+                  <div className="border-b border-border/50 px-2 pb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {t("nav.notifications", lang)}
+                  </div>
+                  {(portal?.notifications ?? []).length === 0 && (
+                    <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
+                  )}
+                  {(portal?.notifications ?? []).map((n: any) => (
+                    <div key={n.id} className="rounded-xl p-3 hover:bg-muted">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${n.kind === "alert" ? "bg-destructive" : n.kind === "success" ? "bg-success" : "bg-gold"}`} />
+                        <span className="text-sm font-semibold">{n.title}</span>
+                      </div>
+                      {n.body && <p className="mt-1 text-xs text-muted-foreground">{n.body}</p>}
+                      <p className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <button onClick={() => { setStage("entry"); setFan(""); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-border" aria-label="Exit"><LogOut className="h-4 w-4" /></button>
+            <button onClick={() => { setStage("entry"); setFan(""); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-border" aria-label={t("nav.signOut", lang)}><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
         <div className="gold-divider" />
