@@ -432,6 +432,70 @@ function HospitalAdminPortal() {
           />
         </div>
       </div>
+
+      {/* Manager roster */}
+      <div className="card-panel p-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg font-bold">{t("admin.userManagement", lang)} · {t("role.manager", lang)}</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Review every manager who can operate on Ambo General Hospital. Remove access instantly if a manager leaves.
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <h3 className="font-display text-sm font-bold">Signed-in managers</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.active ?? []).filter((a) => a.role === "manager").map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                    <div className="text-xs text-muted-foreground">joined {new Date(a.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmActive.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {t("common.remove", lang)}
+                  </button>
+                </div>
+              ))}
+              {(accounts?.active ?? []).filter((a) => a.role === "manager").length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No managers signed in yet.
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-bold">Invited managers (not yet signed in)</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.authorized ?? []).filter((a) => a.role === "manager").map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmAuth.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {(accounts?.authorized ?? []).filter((a) => a.role === "manager").length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No pending manager invitations.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </PortalShell>
   );
 }
