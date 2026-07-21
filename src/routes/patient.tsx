@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Bell, FileText, FolderOpen, HeartPulse, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { getPatientPortal, lookupPatient, submitPaymentProof } from "@/lib/patient.functions";
@@ -9,6 +9,7 @@ import { fileToBase64 } from "@/lib/media";
 import { AIAssistant } from "@/components/AIAssistant";
 import { HospitalClock } from "@/components/HospitalClock";
 import { BackgroundCarousel } from "@/components/PortalShell";
+import { LanguageSwitcher, t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/patient")({
   ssr: false,
@@ -27,6 +28,7 @@ function PatientPortal() {
   const lookup = useServerFn(lookupPatient);
   const submitProof = useServerFn(submitPaymentProof);
   const fetchPortal = useServerFn(getPatientPortal);
+  const [lang] = useLang();
 
   const [fan, setFan] = useState("");
   const [stage, setStage] = useState<"entry" | "payment" | "portal">("entry");
@@ -34,6 +36,10 @@ function PatientPortal() {
   const [busy, setBusy] = useState(false);
   const [showCase, setShowCase] = useState(false);
   const [payingService, setPayingService] = useState<PayPurpose | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [ring, setRing] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const enter = async () => {
     if (!/^\d{16}$/.test(fan)) return toast.error("FAN number must be exactly 16 digits.");
