@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,8 @@ import { useHospital, useHospitalBackgrounds } from "@/lib/media";
 import { PortalShell } from "@/components/PortalShell";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Countdown } from "@/components/Countdown";
+import { listAccounts, removeActiveUser, removeAuthorized } from "@/lib/admin.functions";
+import { t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/hospital-admin")({
   head: () => ({ meta: [{ title: "Hospital Admin — Ambo General Hospital" }] }),
