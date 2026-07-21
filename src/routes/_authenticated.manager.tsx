@@ -116,6 +116,7 @@ function ManagerPortal() {
     pob: "",
     sex: "female",
     phone: "",
+    emergencyPhone: "",
     txn: "",
     caseInfo: "",
     notes: "",
@@ -144,6 +145,7 @@ function ManagerPortal() {
           place_of_birth: form.pob || null,
           sex: form.sex,
           phone: form.phone || null,
+          emergency_phone: form.emergencyPhone || null,
           medical_notes: form.notes || null,
           photo_url: photoPath,
           registered_by: me.user?.id,
@@ -178,7 +180,7 @@ function ManagerPortal() {
           ? "Insured patient registered — no payment needed. They can open the portal now."
           : "Patient registered. They must pay the registration fee before accessing the portal.",
       );
-      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", txn: "", caseInfo: "", notes: "", hasInsurance: false });
+      setForm({ fullName: "", fan: "", dob: "", pob: "", sex: "female", phone: "", emergencyPhone: "", txn: "", caseInfo: "", notes: "", hasInsurance: false });
       setPhoto(null);
     },
     onError: (e) => toast.error(e.message),
@@ -404,6 +406,7 @@ function ManagerPortal() {
             </label>
             <input placeholder="Place of birth" value={form.pob} onChange={(e) => setForm({ ...form, pob: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2" />
             <input placeholder="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2" />
+            <input placeholder="🚨 Emergency phone number (next of kin)" value={form.emergencyPhone} onChange={(e) => setForm({ ...form, emergencyPhone: e.target.value })} className="col-span-2 rounded-xl border border-terracotta/40 bg-terracotta/5 px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2" />
             <textarea placeholder="Case information" value={form.caseInfo} onChange={(e) => setForm({ ...form, caseInfo: e.target.value })} rows={2} className="col-span-2 rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2" />
             <textarea placeholder="Medical notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="col-span-2 rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2" />
             <label className="col-span-2 flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:border-primary">
