@@ -99,6 +99,40 @@ function PatientPortal() {
     queryFn: () => fetchPortal({ data: { fan } }),
   });
 
+  // Ring the bell + optional sound whenever a brand-new notification arrives.
+  useEffect(() => {
+    const notifs = (portal as { notifications?: { id: string }[] } | undefined)?.notifications ?? [];
+    if (!notifs.length) return;
+    const fresh = notifs.filter((n) => !seenIds.has(n.id));
+    if (fresh.length && seenIds.size > 0) {
+      setRing(true);
+      const t1 = setTimeout(() => setRing(false), 2500);
+      try {
+        const audio = new Audio(
+          "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+        );
+        audio.volume = 0.4;
+        audio.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+      return () => clearTimeout(t1);
+    }
+    if (seenIds.size === 0) {
+      // first load — mark all as seen without ringing
+      setSeenIds(new Set(notifs.map((n) => n.id)));
+    }
+  }, [portal, seenIds]);
+
+  // close notif dropdown on outside click
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
   // poll while waiting for approval
   useQuery({
     queryKey: ["payment-poll", fan],
