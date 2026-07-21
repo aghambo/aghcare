@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useHospital, useHospitalBackgrounds, useSignedUrl } from "@/lib/media";
 import { useAuth } from "@/lib/useAuth";
 import { HospitalClock } from "@/components/HospitalClock";
+import { LanguageSwitcher } from "@/lib/i18n";
 import defaultBg from "@/assets/hospital-default-bg.jpg";
 
 export function BackgroundCarousel({ hospitalId, height = "h-56" }: { hospitalId?: string; height?: string }) {
@@ -180,6 +181,7 @@ export function PortalShell({
             <div className="hidden md:block">
               <HospitalClock hospitalId={hospital?.id} />
             </div>
+            <LanguageSwitcher />
             <NotificationsBell />
             <button
               onClick={async () => {

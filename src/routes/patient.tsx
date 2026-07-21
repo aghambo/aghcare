@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Bell, FileText, FolderOpen, HeartPulse, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { getPatientPortal, lookupPatient, submitPaymentProof } from "@/lib/patient.functions";
@@ -9,6 +9,7 @@ import { fileToBase64 } from "@/lib/media";
 import { AIAssistant } from "@/components/AIAssistant";
 import { HospitalClock } from "@/components/HospitalClock";
 import { BackgroundCarousel } from "@/components/PortalShell";
+import { LanguageSwitcher, t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/patient")({
   ssr: false,
@@ -27,6 +28,7 @@ function PatientPortal() {
   const lookup = useServerFn(lookupPatient);
   const submitProof = useServerFn(submitPaymentProof);
   const fetchPortal = useServerFn(getPatientPortal);
+  const [lang] = useLang();
 
   const [fan, setFan] = useState("");
   const [stage, setStage] = useState<"entry" | "payment" | "portal">("entry");
@@ -34,6 +36,10 @@ function PatientPortal() {
   const [busy, setBusy] = useState(false);
   const [showCase, setShowCase] = useState(false);
   const [payingService, setPayingService] = useState<PayPurpose | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [ring, setRing] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const enter = async () => {
     if (!/^\d{16}$/.test(fan)) return toast.error("FAN number must be exactly 16 digits.");
@@ -93,6 +99,40 @@ function PatientPortal() {
     queryFn: () => fetchPortal({ data: { fan } }),
   });
 
+  // Ring the bell + optional sound whenever a brand-new notification arrives.
+  useEffect(() => {
+    const notifs = (portal as { notifications?: { id: string }[] } | undefined)?.notifications ?? [];
+    if (!notifs.length) return;
+    const fresh = notifs.filter((n) => !seenIds.has(n.id));
+    if (fresh.length && seenIds.size > 0) {
+      setRing(true);
+      const t1 = setTimeout(() => setRing(false), 2500);
+      try {
+        const audio = new Audio(
+          "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+        );
+        audio.volume = 0.4;
+        audio.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+      return () => clearTimeout(t1);
+    }
+    if (seenIds.size === 0) {
+      // first load — mark all as seen without ringing
+      setSeenIds(new Set(notifs.map((n) => n.id)));
+    }
+  }, [portal, seenIds]);
+
+  // close notif dropdown on outside click
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
   // poll while waiting for approval
   useQuery({
     queryKey: ["payment-poll", fan],
@@ -112,11 +152,14 @@ function PatientPortal() {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero eth-pattern-strong px-4">
         <div className="glass-strong w-full max-w-md animate-fade-up p-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-gold text-gold-foreground">
-            <UserRound className="h-6 w-6" />
+          <div className="flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-gold text-gold-foreground">
+              <UserRound className="h-6 w-6" />
+            </div>
+            <LanguageSwitcher />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold">Patient Portal</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Enter your Fayda ID / FAN number (16 digits) to open your health journey.</p>
+          <h1 className="mt-4 text-2xl font-semibold">{t("patient.portal", lang)}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("patient.enterFan", lang)}</p>
           <input
             value={fan}
             maxLength={16}
@@ -130,7 +173,7 @@ function PatientPortal() {
             disabled={busy || fan.length !== 16}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl gradient-hero px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
           >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />} Continue
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("patient.continue", lang)}
           </button>
         </div>
       </div>
@@ -198,11 +241,47 @@ function PatientPortal() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="hidden md:block"><HospitalClock hospitalId={portal?.hospital.id} /></div>
-            <div className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              {checkupCount > 0 && <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground animate-soft-pulse">{checkupCount}</span>}
+            <LanguageSwitcher />
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => {
+                  setNotifOpen((o) => !o);
+                  const notifs = portal?.notifications ?? [];
+                  setSeenIds(new Set(notifs.map((n: any) => n.id)));
+                  setRing(false);
+                }}
+                className={`relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card ${ring ? "animate-bounce ring-2 ring-destructive" : ""}`}
+                aria-label={t("nav.notifications", lang)}
+              >
+                <Bell className={`h-5 w-5 ${ring ? "text-destructive" : "text-muted-foreground"}`} />
+                {(portal?.notifications ?? []).filter((n: any) => !seenIds.has(n.id)).length > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground animate-soft-pulse">
+                    {(portal?.notifications ?? []).filter((n: any) => !seenIds.has(n.id)).length}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 z-50 mt-2 max-h-96 w-80 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-elegant">
+                  <div className="border-b border-border/50 px-2 pb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {t("nav.notifications", lang)}
+                  </div>
+                  {(portal?.notifications ?? []).length === 0 && (
+                    <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
+                  )}
+                  {(portal?.notifications ?? []).map((n: any) => (
+                    <div key={n.id} className="rounded-xl p-3 hover:bg-muted">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${n.kind === "alert" ? "bg-destructive" : n.kind === "success" ? "bg-success" : "bg-gold"}`} />
+                        <span className="text-sm font-semibold">{n.title}</span>
+                      </div>
+                      {n.body && <p className="mt-1 text-xs text-muted-foreground">{n.body}</p>}
+                      <p className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <button onClick={() => { setStage("entry"); setFan(""); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-border" aria-label="Exit"><LogOut className="h-4 w-4" /></button>
+            <button onClick={() => { setStage("entry"); setFan(""); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-border" aria-label={t("nav.signOut", lang)}><LogOut className="h-4 w-4" /></button>
           </div>
         </div>
         <div className="gold-divider" />
@@ -299,7 +378,7 @@ function PatientPortal() {
           onClick={() => setShowCase((s) => !s)}
           className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-hero px-6 py-4 font-display text-lg font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.01]"
         >
-          <FolderOpen className="h-5 w-5" /> {showCase ? "Close my case" : "Open my case"}
+          <FolderOpen className="h-5 w-5" /> {showCase ? t("patient.closeCase", lang) : t("patient.openCase", lang)}
         </button>
 
         {showCase && (

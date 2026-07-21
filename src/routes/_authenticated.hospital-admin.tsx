@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,8 @@ import { useHospital, useHospitalBackgrounds } from "@/lib/media";
 import { PortalShell } from "@/components/PortalShell";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Countdown } from "@/components/Countdown";
+import { listAccounts, removeActiveUser, removeAuthorized } from "@/lib/admin.functions";
+import { t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/hospital-admin")({
   head: () => ({ meta: [{ title: "Hospital Admin — Ambo General Hospital" }] }),
@@ -35,6 +38,32 @@ function HospitalAdminPortal() {
   const queryClient = useQueryClient();
   const { data: hospital } = useHospital();
   const { data: backgrounds } = useHospitalBackgrounds(hospital?.id);
+  const [lang] = useLang();
+  const listAccountsFn = useServerFn(listAccounts);
+  const rmAuthFn = useServerFn(removeAuthorized);
+  const rmActiveFn = useServerFn(removeActiveUser);
+
+  const { data: accounts } = useQuery({
+    queryKey: ["accounts", "hospital_admin"],
+    queryFn: () => listAccountsFn(),
+  });
+
+  const rmAuth = useMutation({
+    mutationFn: (id: string) => rmAuthFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Authorization removed");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const rmActive = useMutation({
+    mutationFn: (userRoleId: string) => rmActiveFn({ data: { userRoleId } }),
+    onSuccess: () => {
+      toast.success("Manager access revoked");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: rooms } = useQuery({
     queryKey: ["all-rooms"],
@@ -401,6 +430,70 @@ function HospitalAdminPortal() {
             actor="hospital_admin"
             context={`Hospital: ${hospital?.name}. Patients: ${stats?.patients} (${stats?.active} active). Rooms: ${rooms?.length}/${hospital?.room_limit}. Registration fee: ${hospital?.registration_fee} ETB. Pending payments: ${stats?.pending}.`}
           />
+        </div>
+      </div>
+
+      {/* Manager roster */}
+      <div className="card-panel p-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h2 className="font-display text-lg font-bold">{t("admin.userManagement", lang)} · {t("role.manager", lang)}</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Review every manager who can operate on Ambo General Hospital. Remove access instantly if a manager leaves.
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <h3 className="font-display text-sm font-bold">Signed-in managers</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.active ?? []).filter((a) => a.role === "manager").map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                    <div className="text-xs text-muted-foreground">joined {new Date(a.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmActive.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> {t("common.remove", lang)}
+                  </button>
+                </div>
+              ))}
+              {(accounts?.active ?? []).filter((a) => a.role === "manager").length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No managers signed in yet.
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-bold">Invited managers (not yet signed in)</h3>
+            <div className="mt-2 space-y-2">
+              {(accounts?.authorized ?? []).filter((a) => a.role === "manager").map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{a.email}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm(t("admin.confirmRemove", lang))) rmAuth.mutate(a.id);
+                    }}
+                    className="flex items-center gap-1 rounded-lg bg-destructive/10 px-2 py-1 text-xs font-bold text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {(accounts?.authorized ?? []).filter((a) => a.role === "manager").length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  No pending manager invitations.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </PortalShell>
