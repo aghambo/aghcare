@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import heroImage from "@/assets/hero-ethiopian.jpg";
+import { LanguageSwitcher, t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -89,6 +90,7 @@ const features = [
 ];
 
 function Landing() {
+  const [lang] = useLang();
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
@@ -101,15 +103,19 @@ function Landing() {
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/70" />
+        <div className="absolute right-6 top-6 z-10"><LanguageSwitcher /></div>
         <div className="relative mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-center px-6 py-24">
           <div className="animate-fade-up">
             <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-black/30 px-4 py-1.5 text-sm font-semibold tracking-wide text-gold backdrop-blur">
               <HeartPulse className="h-4 w-4" />
-              IB Tech E-Health Platform
+              {t("app.title", lang)} · 🇪🇹
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-primary-foreground md:text-6xl">
-              Ambo General Hospital, run with excellence.
+              {t("landing.hero.tagline", lang)}
             </h1>
+            <p className="mt-3 max-w-2xl font-display text-lg italic text-gold/90">
+              እንኳን ደህና መጡ · Baga nagaan dhufte · Welcome to Ambo General Hospital
+            </p>
             <p className="mt-5 max-w-2xl text-lg text-primary-foreground/85">
               A complete hospital operating system — patient registration, payment approval, room
               control, case management, secure communication and intelligent AI assistance, wrapped
@@ -121,13 +127,13 @@ function Landing() {
                 to="/auth"
                 className="rounded-xl gradient-gold px-6 py-3 text-sm font-bold text-gold-foreground shadow-elegant transition-transform hover:scale-[1.03]"
               >
-                Enter your portal
+                {t("landing.enterPortal", lang)}
               </Link>
               <Link
                 to="/patient"
                 className="rounded-xl border border-primary-foreground/30 bg-primary-foreground/10 px-6 py-3 text-sm font-bold text-primary-foreground backdrop-blur transition-colors hover:bg-primary-foreground/20"
               >
-                I am a patient
+                {t("landing.iAmPatient", lang)}
               </Link>
             </div>
           </div>
@@ -136,7 +142,7 @@ function Landing() {
 
       {/* Role selection */}
       <section className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="text-center text-3xl font-semibold md:text-4xl">Choose your role</h2>
+        <h2 className="text-center text-3xl font-semibold md:text-4xl">{t("landing.chooseRole", lang)}</h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
           Five dedicated portals, each with its own permissions, dashboard and workflow.
         </p>

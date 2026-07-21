@@ -378,7 +378,7 @@ function PatientPortal() {
           onClick={() => setShowCase((s) => !s)}
           className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-hero px-6 py-4 font-display text-lg font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.01]"
         >
-          <FolderOpen className="h-5 w-5" /> {showCase ? "Close my case" : "Open my case"}
+          <FolderOpen className="h-5 w-5" /> {showCase ? t("patient.closeCase", lang) : t("patient.openCase", lang)}
         </button>
 
         {showCase && (
