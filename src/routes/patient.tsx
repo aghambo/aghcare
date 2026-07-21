@@ -152,11 +152,14 @@ function PatientPortal() {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero eth-pattern-strong px-4">
         <div className="glass-strong w-full max-w-md animate-fade-up p-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-gold text-gold-foreground">
-            <UserRound className="h-6 w-6" />
+          <div className="flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-gold text-gold-foreground">
+              <UserRound className="h-6 w-6" />
+            </div>
+            <LanguageSwitcher />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold">Patient Portal</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Enter your Fayda ID / FAN number (16 digits) to open your health journey.</p>
+          <h1 className="mt-4 text-2xl font-semibold">{t("patient.portal", lang)}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("patient.enterFan", lang)}</p>
           <input
             value={fan}
             maxLength={16}
@@ -170,7 +173,7 @@ function PatientPortal() {
             disabled={busy || fan.length !== 16}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl gradient-hero px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
           >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />} Continue
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />} {t("patient.continue", lang)}
           </button>
         </div>
       </div>
