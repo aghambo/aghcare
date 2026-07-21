@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -11,6 +12,8 @@ import {
   MessageSquare,
   Save,
   ShieldCheck,
+  Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +21,8 @@ import { useHospital } from "@/lib/media";
 import { PortalShell } from "@/components/PortalShell";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Countdown } from "@/components/Countdown";
+import { addAuthorized, listAccounts, removeActiveUser, removeAuthorized } from "@/lib/admin.functions";
+import { t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/web-admin")({
   head: () => ({ meta: [{ title: "Web Admin — IB Tech E-Health" }] }),
