@@ -440,6 +440,7 @@ export type Database = {
         Row: {
           created_at: string
           date_of_birth: string | null
+          emergency_phone: string | null
           fan_number: string
           full_name: string
           has_insurance: boolean
@@ -457,6 +458,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date_of_birth?: string | null
+          emergency_phone?: string | null
           fan_number: string
           full_name: string
           has_insurance?: boolean
@@ -474,6 +476,7 @@ export type Database = {
         Update: {
           created_at?: string
           date_of_birth?: string | null
+          emergency_phone?: string | null
           fan_number?: string
           full_name?: string
           has_insurance?: boolean
