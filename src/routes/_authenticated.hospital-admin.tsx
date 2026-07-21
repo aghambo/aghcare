@@ -38,6 +38,32 @@ function HospitalAdminPortal() {
   const queryClient = useQueryClient();
   const { data: hospital } = useHospital();
   const { data: backgrounds } = useHospitalBackgrounds(hospital?.id);
+  const [lang] = useLang();
+  const listAccountsFn = useServerFn(listAccounts);
+  const rmAuthFn = useServerFn(removeAuthorized);
+  const rmActiveFn = useServerFn(removeActiveUser);
+
+  const { data: accounts } = useQuery({
+    queryKey: ["accounts", "hospital_admin"],
+    queryFn: () => listAccountsFn(),
+  });
+
+  const rmAuth = useMutation({
+    mutationFn: (id: string) => rmAuthFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Authorization removed");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const rmActive = useMutation({
+    mutationFn: (userRoleId: string) => rmActiveFn({ data: { userRoleId } }),
+    onSuccess: () => {
+      toast.success("Manager access revoked");
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const { data: rooms } = useQuery({
     queryKey: ["all-rooms"],
