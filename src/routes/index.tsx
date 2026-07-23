@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import heroImage from "@/assets/hero-ethiopian.jpg";
+import ibTechLogo from "@/assets/ib-tech-logo.png.asset.json";
 import { LanguageSwitcher, t, useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
@@ -106,9 +107,16 @@ function Landing() {
         <div className="absolute right-6 top-6 z-10"><LanguageSwitcher /></div>
         <div className="relative mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-center px-6 py-24">
           <div className="animate-fade-up">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-black/30 px-4 py-1.5 text-sm font-semibold tracking-wide text-gold backdrop-blur">
-              <HeartPulse className="h-4 w-4" />
-              {t("app.title", lang)} · 🇪🇹
+            <div className="flex items-center gap-4">
+              <img
+                src={ibTechLogo.url}
+                alt="IB Tech — Innovate. Build. Grow."
+                className="h-16 w-16 rounded-2xl bg-white/95 p-1.5 shadow-elegant ring-1 ring-gold/40 md:h-20 md:w-20"
+              />
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-black/30 px-4 py-1.5 text-sm font-semibold tracking-wide text-gold backdrop-blur">
+                <HeartPulse className="h-4 w-4" />
+                {t("app.title", lang)} · 🇪🇹
+              </div>
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-primary-foreground md:text-6xl">
               {t("landing.hero.tagline", lang)}
