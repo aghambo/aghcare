@@ -168,7 +168,7 @@ export const Route = createFileRoute("/api/ai")({
             body: JSON.stringify({
               model: "google/gemini-2.5-flash",
               messages: [{ role: "system", content: system }, ...messages],
-              plugins: [{ id: "web", max_results: 5 }],
+              plugins: [{ id: "web", max_results: 8 }],
             }),
           });
 
