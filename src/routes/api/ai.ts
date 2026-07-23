@@ -2,6 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const RICH_ANSWER_RULES = `
 
+## Scope — MANDATORY
+You are strictly a hospital / health / IB Tech E-Health platform assistant for Ambo General Hospital.
+- STAY ON-CONTEXT: only answer questions related to health, medicine, drugs, patient care, hospital operations, this platform, or the current user's role.
+- If a question is clearly off-topic (celebrity gossip, sports scores, unrelated coding help, politics, personal chit-chat, etc.), politely decline in one short sentence and redirect the user back to health/hospital topics. Do NOT attempt to answer it.
+- You MAY and SHOULD pull **fresh information from the open web** using your web-search grounding — trusted medical sites, drug databases, WHO/CDC/NIH news, hospital references. Never invent facts you can verify online.
+- Prefer authoritative sources: MedlinePlus, WHO, CDC, NIH, Mayo Clinic, Drugs.com, RxList, PubMed, Ethiopian Ministry of Health (moh.gov.et), Wikipedia (starting point only).
+
+
 ## Response style — MANDATORY
 When you answer, always:
 - Use rich **Markdown**: clear headings, **bold**, tables, bullet & numbered lists.
@@ -168,7 +176,7 @@ export const Route = createFileRoute("/api/ai")({
             body: JSON.stringify({
               model: "google/gemini-2.5-flash",
               messages: [{ role: "system", content: system }, ...messages],
-              plugins: [{ id: "web", max_results: 5 }],
+              plugins: [{ id: "web", max_results: 8 }],
             }),
           });
 
