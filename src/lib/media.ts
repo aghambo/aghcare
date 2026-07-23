@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getHospitalBackgroundsPublic } from "@/lib/hospital.functions";
 
 /** Signed URL for a private storage object (1 hour). */
 export async function signedUrl(bucket: string, path: string) {
@@ -29,20 +31,11 @@ export function useHospital() {
 }
 
 export function useHospitalBackgrounds(hospitalId: string | undefined) {
+  const fetchBg = useServerFn(getHospitalBackgroundsPublic);
   return useQuery({
     queryKey: ["hospital-backgrounds", hospitalId],
     enabled: !!hospitalId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("hospital_media")
-        .select("*")
-        .eq("hospital_id", hospitalId as string)
-        .eq("media_type", "background")
-        .order("sort_order");
-      if (error) throw error;
-      const urls = await Promise.all(data.map((m) => signedUrl("hospital-media", m.url)));
-      return data.map((m, i) => ({ ...m, signed: urls[i] })).filter((m) => m.signed);
-    },
+    queryFn: () => fetchBg({ data: { hospitalId: hospitalId as string } }),
   });
 }
 
