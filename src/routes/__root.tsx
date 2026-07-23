@@ -78,20 +78,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "IB Tech E-Health — Ambo General Hospital" },
+      { title: "IB Tech E-Health — Ambo General Hospital Platform" },
       {
         name: "description",
         content:
-          "IB Tech E-Health Platform for Ambo General Hospital — role-based hospital operating system with patient care, payments, rooms and AI assistance.",
+          "The complete hospital operating system for Ambo General Hospital: patient care, rooms, payments, secure communication and AI — in one elegant Ethiopian-inspired platform.",
       },
       { name: "author", content: "IB Tech" },
-      { property: "og:title", content: "IB Tech E-Health — Ambo General Hospital" },
+      { property: "og:title", content: "IB Tech E-Health — Ambo General Hospital Platform" },
       {
         property: "og:description",
-        content: "A premium hospital operating system for Ambo General Hospital.",
+        content: "The complete hospital operating system for Ambo General Hospital: patient care, rooms, payments, secure communication and AI — in one elegant Ethiopian-inspired platform.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "IB Tech E-Health — Ambo General Hospital Platform" },
+      { name: "twitter:description", content: "The complete hospital operating system for Ambo General Hospital: patient care, rooms, payments, secure communication and AI — in one elegant Ethiopian-inspired platform." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/JFSuEqQuhEe5YcKgRmsOySN76nJ2/social-images/social-1784813888562-ib.jpg.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/JFSuEqQuhEe5YcKgRmsOySN76nJ2/social-images/social-1784813888562-ib.jpg.webp" },
     ],
     links: [
       {
