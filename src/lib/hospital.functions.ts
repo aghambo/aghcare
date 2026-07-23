@@ -23,10 +23,10 @@ export const getHospitalBackgroundsPublic = createServerFn({ method: "GET" })
         const { data: s } = await supabaseAdmin.storage
           .from("hospital-media")
           .createSignedUrl(m.url, 3600);
-        return { id: m.id, sort_order: m.sort_order, signed: s?.signedUrl ?? null };
+        return { id: m.id, url: m.url, sort_order: m.sort_order, signed: s?.signedUrl ?? null };
       }),
     );
-    return signed.filter((s) => !!s.signed) as { id: string; sort_order: number; signed: string }[];
+    return signed.filter((s) => !!s.signed) as { id: string; url: string; sort_order: number; signed: string }[];
   });
 
 export const getHospitalTimePublic = createServerFn({ method: "GET" })
