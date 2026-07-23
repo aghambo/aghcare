@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Crown, Loader2, Stethoscope, UserRound, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ibTechLogo from "@/assets/ib-tech-logo.png.asset.json";
 import { lovable } from "@/integrations/lovable/index";
 import { bootstrapUser } from "@/lib/auth.functions";
 import { ROLE_HOME, ROLE_LABELS, type AppRole } from "@/lib/roles";
@@ -115,6 +116,11 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center gradient-hero eth-pattern-strong px-4 py-12">
       <div className="w-full max-w-lg animate-fade-up">
         <div className="text-center">
+          <img
+            src={ibTechLogo.url}
+            alt="IB Tech"
+            className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-white/95 p-2 shadow-elegant ring-1 ring-gold/40"
+          />
           <h1 className="text-3xl font-semibold text-primary-foreground">IB Tech E-Health</h1>
           <p className="mt-1 text-sm text-primary-foreground/70">Ambo General Hospital · Secure portal access</p>
           <div className="gold-divider mx-auto mt-4 w-24" />
