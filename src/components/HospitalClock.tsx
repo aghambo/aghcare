@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getHospitalTimePublic } from "@/lib/hospital.functions";
 
 /**
  * Displays the hospital time set by the manager: base_time + elapsed since it was set.
  * Falls back to real local time when no manager time is configured.
  */
 export function HospitalClock({ hospitalId }: { hospitalId?: string }) {
+  const fetchTime = useServerFn(getHospitalTimePublic);
   const { data: setting } = useQuery({
     queryKey: ["hospital-time", hospitalId],
     enabled: !!hospitalId,
     refetchInterval: 60000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("hospital_time")
-        .select("*")
-        .eq("hospital_id", hospitalId as string)
-        .order("set_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data;
-    },
+    queryFn: () => fetchTime({ data: { hospitalId: hospitalId as string } }),
   });
 
   const [tick, setTick] = useState(Date.now());
