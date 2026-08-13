@@ -11,6 +11,13 @@ import { ROLE_HOME, ROLE_LABELS, type AppRole } from "@/lib/roles";
 
 type AuthSearch = { role?: string; redirect?: string };
 
+/** Keeps a same-origin post-login destination (e.g. the OAuth consent screen) through auth round-trips. */
+function authReturnPath(redirectTo?: string) {
+  return redirectTo && redirectTo.startsWith("/")
+    ? `/auth?redirect=${encodeURIComponent(redirectTo)}`
+    : "/auth";
+}
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => ({
     role: typeof search.role === "string" ? search.role : undefined,
@@ -32,7 +39,7 @@ const staffRoles: { key: AppRole; icon: typeof Crown; desc: string }[] = [
 ];
 
 function AuthPage() {
-  const { role: preselected } = Route.useSearch();
+  const { role: preselected, redirect: redirectTo } = Route.useSearch();
   const navigate = useNavigate();
   const bootstrap = useServerFn(bootstrapUser);
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(
@@ -58,6 +65,10 @@ function AuthPage() {
       } else {
         toast.success("Welcome back!");
       }
+      if (redirectTo && redirectTo.startsWith("/")) {
+        window.location.href = redirectTo;
+        return;
+      }
       navigate({ to: ROLE_HOME[result.role] });
     } catch {
       toast.error("Could not verify your access. Please try again.");
@@ -80,7 +91,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/auth" },
+          options: { emailRedirectTo: window.location.origin + authReturnPath(redirectTo) },
         });
         if (error) throw error;
         toast.success("Account created. If email confirmation is required, check your inbox — then sign in.");
@@ -100,7 +111,7 @@ function AuthPage() {
   const handleGoogle = async () => {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/auth",
+      redirect_uri: window.location.origin + authReturnPath(redirectTo),
     });
     if (result.error) {
       toast.error("Google sign-in failed");
