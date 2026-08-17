@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   Banknote,
+  BarChart3,
   Building2,
   CalendarClock,
   DoorOpen,
@@ -201,6 +202,25 @@ function WebAdminPortal() {
       subtitle="IB Tech E-Health Platform · Platform command center"
       requiredRole="web_admin"
     >
+      {/* Analytics */}
+      <div className="glass flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-display text-lg font-bold">Platform analytics</h2>
+          <p className="text-xs text-muted-foreground">
+            Traffic, usage and performance insights for the platform.
+          </p>
+        </div>
+        <a
+          href="https://lovable.dev/projects/0ba1b38d-f80b-4459-9ab7-519a8bfd847f?view=more&subview=analytics"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl gradient-gold px-4 py-2 text-sm font-bold text-gold-foreground shadow-md transition hover:opacity-90"
+        >
+          <BarChart3 className="h-4 w-4" />
+          Watch analytics
+        </a>
+      </div>
+
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={DoorOpen} label="Rooms registered" value={stats?.rooms ?? "—"} />

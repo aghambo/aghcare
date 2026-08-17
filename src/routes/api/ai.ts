@@ -57,6 +57,21 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     RICH_ANSWER_RULES,
 };
 
+const LANGUAGE_RULES: Record<"en" | "am" | "om", string> = {
+  en: `
+
+## LANGUAGE — MANDATORY
+The user's preferred language is **English**. Reply in clear, professional English. If the user writes in Amharic or Afaan Oromoo, reply in that language instead. Keep all Markdown structure (headings, tables, diagrams, links, images) exactly as required.`,
+  am: `
+
+## LANGUAGE — MANDATORY
+የተጠቃሚው የመረጠው ቋንቋ **አማርኛ** ነው። መልስህን በሙሉ በአማርኛ ጻፍ (ርዕሶች፣ ሠንጠረዦች፣ ዝርዝሮች ሁሉም በአማርኛ)። የመድኃኒት/የሕክምና ስሞችን፣ የቁጥር መረጃዎችን እና አገናኞችን በእንግሊዝኛ በቅንፍ ማከል ትችላለህ። ተጠቃሚው በእንግሊዝኛ ወይም በኦሮምኛ ከጻፈ በዚያ ቋንቋ መልስ። የMarkdown አቀራረብ (ሠንጠረዥ፣ ዲያግራም፣ አገናኝ፣ ምስል) አትቀይር።`,
+  om: `
+
+## LANGUAGE — MANDATORY
+Afaan filatame kan fayyadamaa **Afaan Oromoo** ti. Deebii kee guutuu Afaan Oromootiin barreessi (mata dureewwan, gabatee, tarreeffama hunda Afaan Oromootiin). Maqaa qorichaa fi ogummaa fayyaa Afaan Ingiliffaan cinaacha (…) itti dabaluu dandeessa. Yoo fayyadamaan Afaan Ingiliffaa yookaan Amaariffaan barreesse, afaan sanaan deebisi. Caasaa Markdown (gabatee, diyaagiraamii, hidhaa, suuraa) akkuma jiru eegi.`,
+};
+
 type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
@@ -90,6 +105,7 @@ export const Route = createFileRoute("/api/ai")({
             actor?: string;
             context?: string;
             mode?: "chat" | "image";
+            lang?: "en" | "am" | "om";
           };
           const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
           if (!messages.length) {
@@ -177,8 +193,10 @@ export const Route = createFileRoute("/api/ai")({
           }
 
           // ---------------- REGULAR CHAT MODE ----------------
+          const lang = body.lang === "am" || body.lang === "om" ? body.lang : "en";
           const system =
             SYSTEM_PROMPTS[actor] +
+            LANGUAGE_RULES[lang] +
             (body.context ? `\n\nCurrent hospital data context:\n${body.context.slice(0, 6000)}` : "");
 
           // Gemini supports Google-search grounding via OpenRouter's `plugins: [{id:"web"}]`.

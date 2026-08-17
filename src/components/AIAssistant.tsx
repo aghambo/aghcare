@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ImageIcon, Loader2, Send, Sparkles, Wand2, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fileToBase64 } from "@/lib/media";
+import { useLang } from "@/lib/i18n";
 
 type ContentBlock =
   | { type: "text"; text: string }
@@ -28,6 +29,7 @@ export function AIAssistant({
   const [images, setImages] = useState<{ dataUrl: string; file: File }[]>([]);
   const [busy, setBusy] = useState(false);
   const [imageMode, setImageMode] = useState(false);
+  const [lang] = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const addImages = async (files: FileList | null) => {
@@ -71,6 +73,7 @@ export function AIAssistant({
           actor,
           context,
           mode: wasImageMode ? "image" : "chat",
+          lang,
         }),
       });
       const data = (await resp.json()) as { reply?: string; images?: string[]; error?: string };
