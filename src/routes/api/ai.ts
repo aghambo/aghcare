@@ -131,6 +131,8 @@ export const Route = createFileRoute("/api/ai")({
             context?: string;
             mode?: "chat" | "image";
             lang?: "en" | "am" | "om";
+            patientId?: string;
+            roomCode?: string;
           };
           const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
           if (!messages.length) {
@@ -142,6 +144,19 @@ export const Route = createFileRoute("/api/ai")({
           }
           const actor = body.actor && SYSTEM_PROMPTS[body.actor] ? body.actor : "patient";
           let mode = body.mode === "image" ? "image" : "chat";
+          const lang = body.lang === "am" || body.lang === "om" ? body.lang : "en";
+
+          // Role-scoped live platform data (ground truth for both modes).
+          const { buildPlatformSnapshot } = await import("@/lib/ai-context.server");
+          const snapshot = await buildPlatformSnapshot(actor as never, {
+            patientId: body.patientId,
+            roomCode: body.roomCode,
+            extra: body.context?.slice(0, 3000),
+          });
+          const dataBlock = snapshot
+            ? `\n\n## LIVE PLATFORM DATA (role-scoped, authoritative)\n${snapshot.slice(0, 22000)}`
+            : "";
+          const system = SYSTEM_PROMPTS[actor] + LANGUAGE_RULES[lang] + dataBlock;
 
           // Auto-switch to image mode when the last user message clearly asks for a drawing.
           if (mode === "chat") {
@@ -151,12 +166,56 @@ export const Route = createFileRoute("/api/ai")({
             }
           }
 
-          // ---------------- IMAGE GENERATION MODE ----------------
+          // ---------------- IMAGE GENERATION MODE (grounded, two-step) ----------------
           if (mode === "image") {
+            // Step 1 — write the full explanation + a visual brief grounded in real platform data.
+            const briefResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      system +
+                      `\n\n## VISUAL BRIEF TASK\nThe user asked for a picture. Reply with EXACTLY two sections and nothing else:\n\nEXPLANATION:\n<A complete written statement, in the user's language, following the COMMUNICATION DEPTH rules: what the visual will show, the real platform/hospital flow or the actual numbers from the LIVE PLATFORM DATA it is built from (name the records, dates, counts, amounts), why it matters for this actor, and the next actions. Use markdown, and a table when the visual encodes numbers.>\n\nIMAGE_PROMPT:\n<One dense English paragraph describing the picture to render. It MUST depict the REAL flow of Ambo General Hospital / the IB Tech E-Health Platform (its actual roles: Web Admin, Hospital Admin, Manager, Doctor's Room, Patient; its real steps: registration → insurance check → payment screenshot validation → room queue → doctor case notes → service fee → follow-up) or a clean analytics visual (bar/line chart, timeline, dashboard) built from the ACTUAL numbers in the LIVE PLATFORM DATA. If the explanation states figures, the image must chart those same figures with visible axis labels and value labels in English. Specify layout, labelled boxes/arrows or axes, flat modern medical infographic style, Ethiopian-inspired palette (forest green, gold, terracotta), white background, no gore, no identifiable real patient faces, no fake logos.>`,
+                  },
+                  ...messages,
+                ],
+              }),
+            });
+
+            let explanation = "";
+            let imagePrompt = "";
+            if (briefResp.ok) {
+              const bd = (await briefResp.json()) as { choices?: { message?: { content?: string } }[] };
+              const raw = bd.choices?.[0]?.message?.content ?? "";
+              const idx = raw.search(/IMAGE_PROMPT\s*:/i);
+              if (idx >= 0) {
+                explanation = raw.slice(0, idx).replace(/^\s*EXPLANATION\s*:?/i, "").trim();
+                imagePrompt = raw.slice(idx).replace(/^[\s\S]*?IMAGE_PROMPT\s*:?/i, "").trim();
+              } else {
+                explanation = raw.trim();
+              }
+            } else if (briefResp.status === 402) {
+              return Response.json(
+                { error: "AI credits are exhausted. Please add credits in workspace settings." },
+                { status: 402 },
+              );
+            }
+
             const lastUser = [...messages].reverse().find((m) => m.role === "user");
-            const userBlocks: ContentBlock[] = Array.isArray(lastUser?.content)
-              ? (lastUser!.content as ContentBlock[])
-              : [{ type: "text", text: String(lastUser?.content ?? "") }];
+            const fallbackText = extractText(lastUser ?? { role: "user", content: "" });
+            const userBlocks: ContentBlock[] = [
+              { type: "text", text: imagePrompt || fallbackText },
+            ];
+            // Keep any attached reference images so the render can build on them.
+            if (Array.isArray(lastUser?.content)) {
+              for (const b of lastUser!.content as ContentBlock[]) {
+                if (b.type === "image_url") userBlocks.push(b);
+              }
+            }
 
             const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
@@ -168,7 +227,7 @@ export const Route = createFileRoute("/api/ai")({
                   {
                     role: "system",
                     content:
-                      "You are an image generator for a hospital platform. Produce clear, tasteful, professional images that fit medical, educational or informational contexts. When helpful, use an Ethiopian-inspired visual identity (warm earth tones, subtle woven patterns). Never generate graphic gore, explicit content, or images of identifiable real patients.",
+                      "You render professional infographics, workflow diagrams and data-analytics visuals for the IB Tech E-Health Platform at Ambo General Hospital. Draw exactly what the prompt describes, including every label, axis and number it names, spelled correctly in English. Flat modern medical style, Ethiopian-inspired palette (forest green, gold, terracotta), clean white background. Never draw gore, explicit content, identifiable real patients, or invented brand logos.",
                   },
                   { role: "user", content: userBlocks },
                 ],
@@ -205,7 +264,7 @@ export const Route = createFileRoute("/api/ai")({
             const images = (msg?.images ?? [])
               .map((i) => i?.image_url?.url)
               .filter((u): u is string => !!u);
-            const reply = msg?.content ?? (images.length ? "Here's the image you asked for." : "");
+            const reply = explanation || msg?.content || "Here's the visual you asked for.";
 
             if (!images.length) {
               return Response.json(
@@ -218,11 +277,7 @@ export const Route = createFileRoute("/api/ai")({
           }
 
           // ---------------- REGULAR CHAT MODE ----------------
-          const lang = body.lang === "am" || body.lang === "om" ? body.lang : "en";
-          const system =
-            SYSTEM_PROMPTS[actor] +
-            LANGUAGE_RULES[lang] +
-            (body.context ? `\n\nCurrent hospital data context:\n${body.context.slice(0, 6000)}` : "");
+
 
           // Gemini supports Google-search grounding via OpenRouter's `plugins: [{id:"web"}]`.
           // The gateway safely ignores unknown fields on non-supporting models.
