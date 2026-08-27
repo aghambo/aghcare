@@ -19,10 +19,18 @@ export function AIAssistant({
   actor,
   context,
   compact,
+  patientId,
+  roomCode,
+  quickPrompts,
+  title,
 }: {
   actor: "web_admin" | "hospital_admin" | "manager" | "doctor_room" | "patient";
   context?: string;
   compact?: boolean;
+  patientId?: string;
+  roomCode?: string;
+  quickPrompts?: string[];
+  title?: string;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -42,8 +50,8 @@ export function AIAssistant({
     setImages((cur) => [...cur, ...next].slice(0, 3));
   };
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? input).trim();
     if ((!text && images.length === 0) || busy) return;
 
     const userContent: ContentBlock[] = [];
@@ -74,6 +82,8 @@ export function AIAssistant({
           context,
           mode: wasImageMode ? "image" : "chat",
           lang,
+          patientId,
+          roomCode,
         }),
       });
       const data = (await resp.json()) as { reply?: string; images?: string[]; error?: string };
@@ -102,7 +112,7 @@ export function AIAssistant({
     <div className="glass flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 gradient-hero px-4 py-3 text-primary-foreground">
         <Sparkles className="h-4 w-4 text-gold" />
-        <span className="text-sm font-bold">AI Assistant</span>
+        <span className="text-sm font-bold">{title ?? "AI Assistant"}</span>
         <span className="ml-auto rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
           {actor.replace("_", " ")}
         </span>
@@ -190,6 +200,21 @@ export function AIAssistant({
       {imageMode && (
         <div className="border-t border-border/50 bg-gold/10 px-3 py-1.5 text-[11px] font-semibold text-gold-foreground/80">
           🎨 Image mode — your next prompt will generate an image. Click the wand again to cancel.
+        </div>
+      )}
+      {quickPrompts && quickPrompts.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-border/50 bg-card/40 px-3 py-2">
+          {quickPrompts.map((q) => (
+            <button
+              key={q}
+              type="button"
+              disabled={busy}
+              onClick={() => send(q)}
+              className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/10 disabled:opacity-50"
+            >
+              {q}
+            </button>
+          ))}
         </div>
       )}
       <div className="flex items-center gap-2 border-t border-border/50 bg-card/50 p-3 backdrop-blur">

@@ -34,9 +34,25 @@ When the question IS in-scope, be maximally useful, but keep the answer **specif
 - Explaining a workflow of this platform (registration → insurance check → payment validation → queue → doctor) → include a compact **Mermaid diagram** in a \`\`\`mermaid code block (flowchart TD).
 - When a picture helps a case recorded here (the drug prescribed, the condition noted) → **embed an image** with inline markdown \`![caption](https://…)\` from Wikipedia Commons, MedlinePlus, WHO, CDC, NIH.
 - Cite external sources as **inline markdown links** only when they support something already in this platform.
-- If the user asks you to *draw / generate / sketch / make* an image, tell them to click the 🎨 button — you will then generate it (still on-topic for this platform).
 - Structured, warm, easy to scan. Never a wall of plain text. Never a generic medical lecture.
+
+## COMMUNICATION DEPTH — MANDATORY (never answer in one line)
+Every on-topic answer must be a **complete statement**, not a fragment. Always cover, in this order, skipping only what is truly irrelevant:
+1. **Direct answer** — one bold sentence that answers exactly what was asked.
+2. **What the platform data shows** — quote the concrete records you were given (names, FAN numbers, dates, diagnoses, prescriptions, amounts, payment status, room names). Never say "based on the data" without naming the data.
+3. **Why / how it works** — explain the reasoning, the rule, or the platform mechanic behind it (e.g. why an insured patient is auto-waived, why a screenshot was rejected, why a room is blocked).
+4. **Structured detail** — a table, a comparison, a timeline, or a Mermaid diagram whenever there is more than one item, more than one date, or more than one step.
+5. **Next actions** — a short numbered list of exactly what this actor should do next inside this platform, naming the screen or button.
+6. **Caveats & sources** — what you could not see, what needs human confirmation (clinical decisions always belong to the doctor), plus links for anything external.
+Ask a clarifying question only when the request is genuinely ambiguous — and even then, first give the best answer you can with the data you already have.
+
+## PLATFORM DATA ACCESS
+You are given a role-scoped snapshot of live platform data below (hospital settings, rooms, accounts, patients, payments, and — in a Doctor's Room — the focused patient's complete visit-by-visit history). Treat it as the single source of truth, and use it proactively without being asked. Never reveal data outside the current actor's scope, never invent records, and if something is missing from the snapshot say plainly that it is not visible to your role.
+
+## IMAGE GENERATION
+If the user asks you to *draw / generate / sketch / visualize* something, you generate it directly (the 🎨 button forces this mode too). Generated images must depict the **real flow of Ambo General Hospital and the IB Tech E-Health Platform** — its actual roles, screens, steps, rooms, payment/insurance validation and queue — or a clean data-visual (chart, timeline, dashboard) built from the actual numbers in the snapshot. Always pair the picture with the full written explanation of exactly what it shows.
 `;
+
 
 
 const SYSTEM_PROMPTS: Record<string, string> = {
@@ -50,8 +66,17 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "You are the workflow AI for the Hospital Manager at Ambo General Hospital. Help with patient registration, payment approval, insurance handling, room allocation, case trends and operational questions. You may inspect payment screenshots that the manager attaches and report what you see — extract transaction id, amount and sender when visible." +
     RICH_ANSWER_RULES,
   doctor_room:
-    "You are the clinical support AI in a Doctor's Room at Ambo General Hospital. Summarize patient case history, suggest workflow steps, compare drug options in tables, and produce visual summaries with Mermaid diagrams and embedded reference images. You do NOT give definitive diagnoses — you support the doctor's own clinical judgment. Always remind that final medical decisions belong to the clinician. If the doctor attaches an image (skin lesion, x-ray photo, prescription note), describe what you observe factually." +
+    "You are the clinical support AI in a Doctor's Room at Ambo General Hospital. You do NOT give definitive diagnoses — you support the doctor's own clinical judgment, and final medical decisions always belong to the clinician. If the doctor attaches an image (skin lesion, x-ray photo, prescription note), describe what you observe factually.\n\n" +
+    "### PATIENT-HISTORY MODE (your defining capability)\n" +
+    "When a patient dossier is present in the data snapshot, every answer must be built around THAT ONE PATIENT and nobody else. Anchor each statement to a specific visit date, diagnosis, prescription, fee or follow-up from their record. Unless the doctor asks something narrower, include:\n" +
+    "- **Chronological timeline** of all visits (markdown table: date | case | diagnosis | prescriptions | fee & payment status), plus a Mermaid timeline/flowchart when there are 3+ visits.\n" +
+    "- **Patterns across the history**: recurring complaints, repeated diagnoses, escalating or resolving trend, visit frequency, gaps in care, missed follow-ups.\n" +
+    "- **Medication review**: every drug ever prescribed to this patient, duplicates, repeat courses, and possible interactions between drugs on the current list — flagged as items for the doctor to verify.\n" +
+    "- **Red flags & what is missing** from this specific record (no allergies recorded, no lab attachments, pending follow-up, unpaid service fee blocking the queue, insurance status).\n" +
+    "- **Suggested next steps for today's visit**, tied to what was written at the last visit, ending with the reminder that the clinician decides.\n" +
+    "Never mix in another patient's data, never generalise away from this record, and if a field is empty in the dossier say so explicitly instead of guessing." +
     RICH_ANSWER_RULES,
+
   patient:
     "You are a warm patient assistant for Ambo General Hospital. Explain medical notes and prescriptions in simple, kind language, help patients understand their case history and next steps, and answer portal questions. Never give medical advice beyond explaining what is recorded; always suggest speaking to hospital staff for medical concerns. If the patient shares an image (prescription, receipt, report photo), read it and explain gently. Use pictures and diagrams when they help understanding." +
     RICH_ANSWER_RULES,
@@ -106,6 +131,8 @@ export const Route = createFileRoute("/api/ai")({
             context?: string;
             mode?: "chat" | "image";
             lang?: "en" | "am" | "om";
+            patientId?: string;
+            roomCode?: string;
           };
           const messages = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
           if (!messages.length) {
@@ -117,6 +144,19 @@ export const Route = createFileRoute("/api/ai")({
           }
           const actor = body.actor && SYSTEM_PROMPTS[body.actor] ? body.actor : "patient";
           let mode = body.mode === "image" ? "image" : "chat";
+          const lang = body.lang === "am" || body.lang === "om" ? body.lang : "en";
+
+          // Role-scoped live platform data (ground truth for both modes).
+          const { buildPlatformSnapshot } = await import("@/lib/ai-context.server");
+          const snapshot = await buildPlatformSnapshot(actor as never, {
+            patientId: body.patientId,
+            roomCode: body.roomCode,
+            extra: body.context?.slice(0, 3000),
+          });
+          const dataBlock = snapshot
+            ? `\n\n## LIVE PLATFORM DATA (role-scoped, authoritative)\n${snapshot.slice(0, 22000)}`
+            : "";
+          const system = SYSTEM_PROMPTS[actor] + LANGUAGE_RULES[lang] + dataBlock;
 
           // Auto-switch to image mode when the last user message clearly asks for a drawing.
           if (mode === "chat") {
@@ -126,12 +166,56 @@ export const Route = createFileRoute("/api/ai")({
             }
           }
 
-          // ---------------- IMAGE GENERATION MODE ----------------
+          // ---------------- IMAGE GENERATION MODE (grounded, two-step) ----------------
           if (mode === "image") {
+            // Step 1 — write the full explanation + a visual brief grounded in real platform data.
+            const briefResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      system +
+                      `\n\n## VISUAL BRIEF TASK\nThe user asked for a picture. Reply with EXACTLY two sections and nothing else:\n\nEXPLANATION:\n<A complete written statement, in the user's language, following the COMMUNICATION DEPTH rules: what the visual will show, the real platform/hospital flow or the actual numbers from the LIVE PLATFORM DATA it is built from (name the records, dates, counts, amounts), why it matters for this actor, and the next actions. Use markdown, and a table when the visual encodes numbers.>\n\nIMAGE_PROMPT:\n<One dense English paragraph describing the picture to render. It MUST depict the REAL flow of Ambo General Hospital / the IB Tech E-Health Platform (its actual roles: Web Admin, Hospital Admin, Manager, Doctor's Room, Patient; its real steps: registration → insurance check → payment screenshot validation → room queue → doctor case notes → service fee → follow-up) or a clean analytics visual (bar/line chart, timeline, dashboard) built from the ACTUAL numbers in the LIVE PLATFORM DATA. If the explanation states figures, the image must chart those same figures with visible axis labels and value labels in English. Specify layout, labelled boxes/arrows or axes, flat modern medical infographic style, Ethiopian-inspired palette (forest green, gold, terracotta), white background, no gore, no identifiable real patient faces, no fake logos.>`,
+                  },
+                  ...messages,
+                ],
+              }),
+            });
+
+            let explanation = "";
+            let imagePrompt = "";
+            if (briefResp.ok) {
+              const bd = (await briefResp.json()) as { choices?: { message?: { content?: string } }[] };
+              const raw = bd.choices?.[0]?.message?.content ?? "";
+              const idx = raw.search(/IMAGE_PROMPT\s*:/i);
+              if (idx >= 0) {
+                explanation = raw.slice(0, idx).replace(/^\s*EXPLANATION\s*:?/i, "").trim();
+                imagePrompt = raw.slice(idx).replace(/^[\s\S]*?IMAGE_PROMPT\s*:?/i, "").trim();
+              } else {
+                explanation = raw.trim();
+              }
+            } else if (briefResp.status === 402) {
+              return Response.json(
+                { error: "AI credits are exhausted. Please add credits in workspace settings." },
+                { status: 402 },
+              );
+            }
+
             const lastUser = [...messages].reverse().find((m) => m.role === "user");
-            const userBlocks: ContentBlock[] = Array.isArray(lastUser?.content)
-              ? (lastUser!.content as ContentBlock[])
-              : [{ type: "text", text: String(lastUser?.content ?? "") }];
+            const fallbackText = extractText(lastUser ?? { role: "user", content: "" });
+            const userBlocks: ContentBlock[] = [
+              { type: "text", text: imagePrompt || fallbackText },
+            ];
+            // Keep any attached reference images so the render can build on them.
+            if (Array.isArray(lastUser?.content)) {
+              for (const b of lastUser!.content as ContentBlock[]) {
+                if (b.type === "image_url") userBlocks.push(b);
+              }
+            }
 
             const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
@@ -143,7 +227,7 @@ export const Route = createFileRoute("/api/ai")({
                   {
                     role: "system",
                     content:
-                      "You are an image generator for a hospital platform. Produce clear, tasteful, professional images that fit medical, educational or informational contexts. When helpful, use an Ethiopian-inspired visual identity (warm earth tones, subtle woven patterns). Never generate graphic gore, explicit content, or images of identifiable real patients.",
+                      "You render professional infographics, workflow diagrams and data-analytics visuals for the IB Tech E-Health Platform at Ambo General Hospital. Draw exactly what the prompt describes, including every label, axis and number it names, spelled correctly in English. Flat modern medical style, Ethiopian-inspired palette (forest green, gold, terracotta), clean white background. Never draw gore, explicit content, identifiable real patients, or invented brand logos.",
                   },
                   { role: "user", content: userBlocks },
                 ],
@@ -180,7 +264,7 @@ export const Route = createFileRoute("/api/ai")({
             const images = (msg?.images ?? [])
               .map((i) => i?.image_url?.url)
               .filter((u): u is string => !!u);
-            const reply = msg?.content ?? (images.length ? "Here's the image you asked for." : "");
+            const reply = explanation || msg?.content || "Here's the visual you asked for.";
 
             if (!images.length) {
               return Response.json(
@@ -193,11 +277,7 @@ export const Route = createFileRoute("/api/ai")({
           }
 
           // ---------------- REGULAR CHAT MODE ----------------
-          const lang = body.lang === "am" || body.lang === "om" ? body.lang : "en";
-          const system =
-            SYSTEM_PROMPTS[actor] +
-            LANGUAGE_RULES[lang] +
-            (body.context ? `\n\nCurrent hospital data context:\n${body.context.slice(0, 6000)}` : "");
+
 
           // Gemini supports Google-search grounding via OpenRouter's `plugins: [{id:"web"}]`.
           // The gateway safely ignores unknown fields on non-supporting models.
